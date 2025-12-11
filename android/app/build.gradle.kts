@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.gpt_tickets_autos"
+    namespace = "com.gptservices.autos"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
+import '../../services/auth_service.dart';
+import '../../constants/app_colors.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,9 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBrand = Color(0xFFCF0A2C);
-    const secondaryBrand = Color(0xFFF9BE00);
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -58,8 +56,8 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              primaryBrand,
-              secondaryBrand,
+              AppColors.primary,
+              AppColors.secondary,
             ],
           ),
         ),
@@ -87,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Icon(
                       Icons.directions_car,
                       size: 64,
-                      color: primaryBrand,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -126,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.blue,
+                                  AppColors.primary,
                                 ),
                               ),
                             )
@@ -136,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
                                   Icons.login,
-                                  color: Colors.blue,
+                                  color: AppColors.primary,
                                 );
                               },
                             ),

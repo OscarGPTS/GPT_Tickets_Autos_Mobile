@@ -1,4 +1,4 @@
-package com.example.gpt_tickets_autos
+package com.gptservices.autos
 
 import io.flutter.embedding.android.FlutterActivity
 

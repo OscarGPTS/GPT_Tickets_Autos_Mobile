@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/home/home_screen.dart';
+import 'constants/app_colors.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,13 +13,35 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBrand = Color(0xFFCF0A2C);
-    const secondaryBrand = Color(0xFFF9BE00);
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: primaryBrand,
+    final colorScheme = ColorScheme(
       brightness: Brightness.light,
-    ).copyWith(
-      secondary: secondaryBrand,
+      primary: AppColors.primary,
+      onPrimary: AppColors.onPrimary,
+      primaryContainer: AppColors.primaryContainer,
+      onPrimaryContainer: AppColors.onPrimaryContainer,
+      secondary: AppColors.secondary,
+      onSecondary: AppColors.onSecondary,
+      secondaryContainer: AppColors.secondaryContainer,
+      onSecondaryContainer: AppColors.onSecondaryContainer,
+      tertiary: AppColors.primaryLight,
+      onTertiary: AppColors.onPrimary,
+      tertiaryContainer: AppColors.primaryContainer,
+      onTertiaryContainer: AppColors.onPrimaryContainer,
+      error: AppColors.error,
+      onError: AppColors.onError,
+      errorContainer: AppColors.errorContainer,
+      onErrorContainer: AppColors.onErrorContainer,
+      surface: AppColors.surface,
+      onSurface: AppColors.onSurface,
+      surfaceContainerHighest: AppColors.surfaceVariant,
+      onSurfaceVariant: AppColors.onSurfaceVariant,
+      outline: AppColors.outline,
+      outlineVariant: AppColors.outlineVariant,
+      shadow: AppColors.shadow,
+      scrim: AppColors.scrim,
+      inverseSurface: AppColors.onSurface,
+      onInverseSurface: AppColors.surface,
+      inversePrimary: AppColors.primaryLight,
     );
 
     return MaterialApp(
@@ -27,6 +50,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: colorScheme,
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          titleTextStyle: TextStyle(
+            color: Colors.white, 
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+          iconTheme: IconThemeData(color: Colors.white),
+          backgroundColor: Colors.black, 
+        ),
       ),
       home: const AuthWrapper(),
     );
