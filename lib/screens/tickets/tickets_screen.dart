@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'ticket_detail_screen.dart';
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key});
@@ -137,7 +138,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
-                            // TODO: Navegar a detalle del ticket
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TicketDetailScreen(
+                                  folio: ticket['folio'],
+                                  destination: ticket['infraccion'],
+                                  date: ticket['fecha'],
+                                  timeStart: '09:00',
+                                  timeEnd: '18:00',
+                                  vehicle: ticket['vehiculo'],
+                                  status: ticket['status'],
+                                ),
+                              ),
+                            );
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -241,6 +255,27 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     },
                   ),
                 ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TicketDetailScreen(
+                folio: 'TKT-000000',
+                destination: 'Destino demo',
+                date: '2025-12-11',
+                timeStart: '09:00',
+                timeEnd: '18:00',
+                vehicle: 'Vehículo demo',
+                status: 'Pendiente',
+              ),
+            ),
+          );
+        },
+        backgroundColor: scheme.primary,
+        icon: const Icon(Icons.article),
+        label: const Text('Ver detalle de ticket'),
+      ),
     );
   }
 }

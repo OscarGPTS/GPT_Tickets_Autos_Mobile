@@ -21,7 +21,7 @@ class AppFooterWidget extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Logo
+          
           Image.asset(
             'lib/assets/logo.png',
             height: 60,
@@ -43,8 +43,6 @@ class AppFooterWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          
-          // Descripción
           Text(
             'Sistema de gestión de requisición de vehículos',
             style: TextStyle(
