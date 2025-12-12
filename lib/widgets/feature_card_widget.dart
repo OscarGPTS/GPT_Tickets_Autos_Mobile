@@ -6,6 +6,7 @@ class FeatureCardWidget extends StatelessWidget {
   final String description;
   final Color color;
   final VoidCallback onTap;
+  final int? badgeCount; // Badge de notificación
 
   const FeatureCardWidget({
     super.key,
@@ -14,6 +15,7 @@ class FeatureCardWidget extends StatelessWidget {
     required this.description,
     required this.color,
     required this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -47,12 +49,37 @@ class FeatureCardWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (badgeCount != null && badgeCount! > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              badgeCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

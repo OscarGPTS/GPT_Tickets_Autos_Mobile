@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await _authService.signIn();
       
       if (user != null && mounted) {
+        // Login con Google exitoso - navegar a home
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),

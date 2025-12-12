@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'ticket_detail_screen.dart';
+import '../../services/storage_service.dart';
+import '../../services/auth_service.dart';
+import '../../models/ticket_model.dart';
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key});
@@ -9,8 +12,10 @@ class TicketsScreen extends StatefulWidget {
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
+  final StorageService _storageService = StorageService();
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
-  List<Map<String, dynamic>> _tickets = [];
+  List<TicketModel> _tickets = [];
 
   @override
   void initState() {
@@ -24,31 +29,16 @@ class _TicketsScreenState extends State<TicketsScreen> {
     });
 
     try {
+      // Cargar tickets del storage
+      final tickets = await _storageService.getTickets();
       
-      await Future.delayed(const Duration(seconds: 1));
       setState(() {
-        _tickets = [
-          {
-            'id': '1',
-            'folio': 'TKT-001234',
-            'vehiculo': 'Toyota Corolla ABC-123',
-            'infraccion': 'Exceso de velocidad',
-            'monto': '\$500.00',
-            'fecha': '2025-12-10',
-            'status': 'Pendiente',
-          },
-          {
-            'id': '2',
-            'folio': 'TKT-001235',
-            'vehiculo': 'Honda Civic XYZ-789',
-            'infraccion': 'Estacionamiento indebido',
-            'monto': '\$300.00',
-            'fecha': '2025-12-09',
-            'status': 'Pagado',
-          },
-        ];
+        _tickets = tickets;
         _isLoading = false;
       });
+
+      // Intentar sincronizar en segundo plano
+      _syncTicketsInBackground();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -64,14 +54,57 @@ class _TicketsScreenState extends State<TicketsScreen> {
     }
   }
 
+  /// Sincronizar tickets en segundo plano
+  Future<void> _syncTicketsInBackground() async {
+    try {
+      final email = await _storageService.getUserEmail();
+      final name = await _storageService.getUserName();
+
+      if (email != null && name != null) {
+        final result = await _authService.syncWithBackend(
+          email: email,
+          name: name,
+        );
+
+        if (result.success && mounted) {
+          // Recargar tickets actualizados
+          final tickets = await _storageService.getTickets();
+          setState(() {
+            _tickets = tickets;
+          });
+        }
+      }
+    } catch (e) {
+      // Silenciar errores de sincronización en segundo plano
+      debugPrint('Error en sincronización de tickets: $e');
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'aprobado':
+        return 'Aprobado';
+      case 'en_curso':
+        return 'En curso';
+      case 'finalizado':
+        return 'Finalizado';
+      case 'pendiente':
+        return 'Pendiente';
+      default:
+        return status;
+    }
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'pagado':
+      case 'aprobado':
+        return Colors.blue;
+      case 'en_curso':
+        return Colors.orange;
+      case 'finalizado':
         return Colors.green;
       case 'pendiente':
-        return Colors.orange;
-      case 'vencido':
-        return Colors.red;
+        return Colors.grey;
       default:
         return Colors.grey;
     }
@@ -127,7 +160,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     itemCount: _tickets.length,
                     itemBuilder: (context, index) {
                       final ticket = _tickets[index];
-                      final statusColor = _getStatusColor(ticket['status']);
+                      final statusColor = _getStatusColor(ticket.status);
                       
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -142,13 +175,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => TicketDetailScreen(
-                                  folio: ticket['folio'],
-                                  destination: ticket['infraccion'],
-                                  date: ticket['fecha'],
-                                  timeStart: '09:00',
-                                  timeEnd: '18:00',
-                                  vehicle: ticket['vehiculo'],
-                                  status: ticket['status'],
+                                  ticket: ticket,
                                 ),
                               ),
                             );
@@ -162,7 +189,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      ticket['folio'],
+                                      ticket.folio,
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -178,7 +205,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        ticket['status'],
+                                        _getStatusLabel(ticket.status),
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -190,7 +217,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  ticket['infraccion'],
+                                  ticket.destination ?? 'Sin destino especificado',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -207,7 +234,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
-                                        ticket['vehiculo'],
+                                        ticket.vehicleName,
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: Colors.grey.shade700,
@@ -229,7 +256,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          ticket['fecha'],
+                                          ticket.requestedDate?.toString().split(' ')[0] ?? 'Sin fecha',
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: Colors.grey.shade700,
@@ -237,14 +264,20 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                         ),
                                       ],
                                     ),
-                                    Text(
-                                      ticket['monto'],
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: scheme.primary,
+                                    if (ticket.purpose != null && ticket.purpose!.isNotEmpty)
+                                      Expanded(
+                                        child: Text(
+                                          ticket.purpose!,
+                                          textAlign: TextAlign.right,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: scheme.primary,
+                                          ),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],
@@ -255,28 +288,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     },
                   ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const TicketDetailScreen(
-                folio: 'TKT-000000',
-                destination: 'Destino demo',
-                date: '2025-12-11',
-                timeStart: '09:00',
-                timeEnd: '18:00',
-                vehicle: 'Vehículo demo',
-                status: 'Pendiente',
-              ),
-            ),
-          );
-        },
-        backgroundColor: scheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.article),
-        label: const Text('Ver detalle de ticket'),
-      ),
     );
   }
 }

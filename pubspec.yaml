@@ -38,6 +38,12 @@ dependencies:
   # Google Sign-In
   google_sign_in: ^6.2.1
 
+  # HTTP client para consumir APIs REST
+  http: ^1.2.0
+
+  # Almacenamiento local de datos (sesión de usuario)
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

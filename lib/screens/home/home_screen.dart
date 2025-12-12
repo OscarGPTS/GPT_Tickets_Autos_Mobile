@@ -6,6 +6,7 @@ import '../../widgets/app_footer_widget.dart';
 import '../auth/login_screen.dart';
 import '../vehicles/vehicles_screen.dart';
 import '../tickets/tickets_screen.dart';
+import '../debug/logs_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +21,14 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _photoUrl;
   String? _userName;
   bool _isLoading = true;
+  bool _isSyncing = false;
+  int _pendingTicketsCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
+    _syncWithBackend(); // Sincronizar con API en segundo plano
   }
 
   Future<void> _loadUserInfo() async {
@@ -43,6 +47,79 @@ class _HomeScreenState extends State<HomeScreen> {
         _photoUrl = null;
         _isLoading = false;
       });
+    }
+  }
+
+  /// Actualizar contador de tickets desde storage local
+  Future<void> _updateTicketCount() async {
+    try {
+      final tickets = await _authService.getTickets();
+      if (mounted) {
+        setState(() {
+          _pendingTicketsCount = tickets.length;
+        });
+      }
+    } catch (e) {
+      // Error al obtener tickets, mantener contador actual
+    }
+  }
+
+  /// Sincronizar con el backend para obtener tickets del despachador
+  Future<void> _syncWithBackend() async {
+    setState(() => _isSyncing = true);
+
+    try {
+      final result = await _authService.syncWithBackend();
+
+      if (mounted) {
+        if (result.success) {
+          // Actualizar contador de tickets
+          setState(() {
+            _pendingTicketsCount = result.tickets?.length ?? 0;
+          });
+
+          // Sincronización exitosa
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✓ ${_pendingTicketsCount} ticket${_pendingTicketsCount != 1 ? 's' : ''} pendiente${_pendingTicketsCount != 1 ? 's' : ''}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          // Error en la sincronización (pero no es crítico)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No se pudieron cargar los tickets: ${result.message}'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Reintentar',
+                textColor: Colors.white,
+                onPressed: _syncWithBackend,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error de conexión: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: _syncWithBackend,
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncing = false);
+      }
     }
   }
 
@@ -142,11 +219,31 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: 'Tickets',
                           description: 'Ver y gestionar tickets',
                           color: scheme.secondary,
+                          badgeCount: _pendingTicketsCount,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TicketsScreen(),
+                              ),
+                            );
+                            // Actualizar contador cuando regrese
+                            _updateTicketCount();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Opción de logs (debug)
+                        FeatureCardWidget(
+                          icon: Icons.bug_report,
+                          title: 'Logs del Sistema',
+                          description: 'Ver errores y logs de la aplicación',
+                          color: Colors.purple,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const TicketsScreen(),
+                                builder: (context) => const LogsScreen(),
                               ),
                             );
                           },

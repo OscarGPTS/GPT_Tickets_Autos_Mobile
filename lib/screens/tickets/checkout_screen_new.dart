@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../models/checklist_model.dart';
+import '../../models/ticket_model.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 import 'widgets/form_section_widget.dart';
 import 'widgets/form_input_widget.dart';
 import 'widgets/checklist_checkbox_widget.dart';
 import 'widgets/vehicle_damage_canvas_widget.dart';
 
 class CheckoutScreenNew extends StatefulWidget {
-  const CheckoutScreenNew({super.key});
+  final TicketModel ticket;
+  
+  const CheckoutScreenNew({super.key, required this.ticket});
 
   @override
   State<CheckoutScreenNew> createState() => _CheckoutScreenNewState();
@@ -17,7 +23,14 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
   int _currentStep = 1;
   final int _totalSteps = 12;
 
+  final ApiService _apiService = ApiService();
+  final StorageService _storageService = StorageService();
+  bool _isSubmitting = false;
+  bool _isLoading = true;
+
   late ChecklistModel _checklist;
+  ChecklistResponseModel? _existingChecklist; // Checklist existente desde el backend
+  bool _hasExistingChecklist = false;
   String _condicionCarroceriaImagen = ''; // Base64 de imagen con daños
   
   // Mapa mutable para los valores de los checkboxes
@@ -26,20 +39,104 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
   @override
   void initState() {
     super.initState();
-    _checklist = ChecklistModel(
-      ticketId: 1,
-      tipoInspeccion: 'salida',
-      folio: 1,
-      fecha: DateTime.now().toString().split(' ')[0],
-      destino: 'Centro Comercial',
-      modelo: 'Corolla',
-      placas: 'ABC-123',
-      marca: 'Toyota',
-      kilometrajeInicial: 0,
-      nivelCombustibleInicial: '1/2',
-    );
-    // Inicializar todos los valores del mapa con true por defecto (mejor UX)
-    _checkboxValues.addAll({
+    _loadChecklistData();
+  }
+
+  Future<void> _loadChecklistData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Verificar si el ticket ya tiene un checkout checklist
+      _existingChecklist = widget.ticket.checkoutChecklist;
+      _hasExistingChecklist = _existingChecklist?.exists ?? false;
+
+      // Inicializar checklist con datos del ticket
+      _checklist = ChecklistModel(
+        ticketId: widget.ticket.id,
+        tipoInspeccion: 'salida',
+        folio: int.tryParse(widget.ticket.folio.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        fecha: DateTime.now().toString().split(' ')[0],
+        destino: widget.ticket.destination ?? '',
+        modelo: widget.ticket.vehicle?.model ?? '',
+        placas: widget.ticket.vehicle?.plates ?? '',
+        marca: widget.ticket.vehicle?.brand ?? '',
+        kilometrajeInicial: 0,
+        nivelCombustibleInicial: '1/2',
+      );
+
+      // Si existe checklist, cargar sus valores
+      if (_hasExistingChecklist && _existingChecklist != null) {
+        _loadExistingChecklistValues();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar datos: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _loadExistingChecklistValues() {
+    if (_existingChecklist == null) return;
+
+    // Cargar valores de llantas
+    final llantas = _existingChecklist!.llantas;
+    if (llantas != null) {
+      _checkboxValues['llantaDelanteraDerechaOk'] = llantas['llanta_delantera_derecha'] ?? false;
+      _checkboxValues['llantaDelanteraIzquierdaOk'] = llantas['llanta_delantera_izquierda'] ?? false;
+      _checkboxValues['llantaDelanteraVidaOk'] = llantas['llanta_delantera_vida'] ?? false;
+      _checkboxValues['llantaTrseraDerechaOk'] = llantas['llanta_trasera_derecha'] ?? false;
+      _checkboxValues['llantaTraseraIzquierdaOk'] = llantas['llanta_trasera_izquierda'] ?? false;
+      _checkboxValues['llantaTraseraVidaOk'] = llantas['llanta_trasera_vida'] ?? false;
+      _checkboxValues['llantaRefaccionOk'] = llantas['llanta_refaccion'] ?? false;
+      _checkboxValues['presionAdecuadaOk'] = llantas['presion_adecuada'] ?? false;
+    }
+
+    // Cargar valores de frontal
+    final frontal = _existingChecklist!.frontal;
+    if (frontal != null) {
+      _checkboxValues['parabrisisOk'] = frontal['parabrisas'] ?? false;
+      _checkboxValues['cofreOk'] = frontal['cofre'] ?? false;
+      _checkboxValues['parrillaOk'] = frontal['parrilla'] ?? false;
+      _checkboxValues['defensasOk'] = frontal['defensas'] ?? false;
+      _checkboxValues['moldurasOk'] = frontal['molduras'] ?? false;
+      _checkboxValues['placaOk'] = frontal['placa'] ?? false;
+      _checkboxValues['salpicaderaOk'] = frontal['salpicadera'] ?? false;
+      _checkboxValues['antenaOk'] = frontal['antena'] ?? false;
+    }
+
+    // Cargar demás secciones...
+    final luces = _existingChecklist!.luces;
+    if (luces != null) {
+      _checkboxValues['intermitentesOk'] = luces['intermitentes'] ?? false;
+      _checkboxValues['direccionalDerechaOk'] = luces['direccional_derecha'] ?? false;
+      _checkboxValues['direccionalIzquierdaOk'] = luces['direccional_izquierda'] ?? false;
+      _checkboxValues['luzStopOk'] = luces['luz_stop'] ?? false;
+      _checkboxValues['farosOk'] = luces['faros'] ?? false;
+      _checkboxValues['lucesAltasOk'] = luces['luces_altas'] ?? false;
+      _checkboxValues['luzInteriorOk'] = luces['luz_interior'] ?? false;
+      _checkboxValues['calaveras'] = luces['calaveras_buen_estado'] ?? false;
+    }
+
+    // Cargar imagen de daños si existe
+    final observaciones = _existingChecklist!.observaciones;
+    if (observaciones != null) {
+      _condicionCarroceriaImagen = observaciones['condicion_carroceria_imagen']?.toString() ?? '';
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isLoading && _checkboxValues.isEmpty && !_hasExistingChecklist) {
+      // Inicializar todos los valores del mapa con true por defecto (mejor UX)
+      _checkboxValues.addAll({
       'llantaDelanteraDerechaOk': true, 'llantaDelanteraIzquierdaOk': true, 'llantaDelanteraVidaOk': true,
       'llantaTrseraDerechaOk': true, 'llantaTraseraIzquierdaOk': true, 'llantaTraseraVidaOk': true,
       'llantaRefaccionOk': true, 'presionAdecuadaOk': true, 'parabrisisOk': true, 'cofreOk': true,
@@ -56,8 +153,9 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
       'nivelAnticongelanteOk': true, 'nivelLiquidoFrenosOk': true, 'bateriaOk': true, 'bayonetaAceiteOk': true,
       'taponesOk': true, 'bocinaClaxxonOk': true, 'radiadorOk': true, 'gatoOk': true, 'llaveLlantasOk': true,
       'cablesPasaCorrienteOk': true, 'cajaHerramientasOk': true, 'dadoBirloSeguidadOk': true,
-      'calcomaniastPermisosOk': true, 'calcomaniaVelocidadMaximaOk': true,
-    });
+        'calcomaniastPermisosOk': true, 'calcomaniaVelocidadMaximaOk': true,
+      });
+    }
   }
 
   void _nextStep() {
@@ -72,8 +170,15 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
     }
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Prevenir múltiples envíos
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
       // Crear el modelo actualizado con la imagen de daños
       final checklistCompleto = ChecklistModel(
         ticketId: _checklist.ticketId,
@@ -90,88 +195,123 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
         kilometrajeFinal: _checklist.kilometrajeFinal,
         nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
         nivelCombustibleFinal: _checklist.nivelCombustibleFinal,
-        llantaDelanteraDerechaOk: _checklist.llantaDelanteraDerechaOk,
-        llantaDelanteraIzquierdaOk: _checklist.llantaDelanteraIzquierdaOk,
-        llantaDelanteraVidaOk: _checklist.llantaDelanteraVidaOk,
-        llantaTrseraDerechaOk: _checklist.llantaTrseraDerechaOk,
-        llantaTraseraIzquierdaOk: _checklist.llantaTraseraIzquierdaOk,
-        llantaTraseraVidaOk: _checklist.llantaTraseraVidaOk,
-        llantaRefaccionOk: _checklist.llantaRefaccionOk,
-        presionAdecuadaOk: _checklist.presionAdecuadaOk,
-        parabrisisOk: _checklist.parabrisisOk,
-        cofreOk: _checklist.cofreOk,
-        parrillaOk: _checklist.parrillaOk,
-        defensasOk: _checklist.defensasOk,
-        moldurasOk: _checklist.moldurasOk,
-        placaOk: _checklist.placaOk,
-        salpicaderaOk: _checklist.salpicaderaOk,
-        antenaOk: _checklist.antenaOk,
-        intermitentesOk: _checklist.intermitentesOk,
-        direccionalDerechaOk: _checklist.direccionalDerechaOk,
-        direccionalIzquierdaOk: _checklist.direccionalIzquierdaOk,
-        luzStopOk: _checklist.luzStopOk,
-        farosOk: _checklist.farosOk,
-        lucesAltasOk: _checklist.lucesAltasOk,
-        luzInteriorOk: _checklist.luzInteriorOk,
-        calaveras: _checklist.calaveras,
-        mataChispassOk: _checklist.mataChispassOk,
-        alarmaOk: _checklist.alarmaOk,
-        extintorOk: _checklist.extintorOk,
-        botiquinOk: _checklist.botiquinOk,
-        tarjetaCirculacionOk: _checklist.tarjetaCirculacionOk,
-        licenciaConducirVigenteOk: _checklist.licenciaConducirVigenteOk,
-        polizaSeguroOk: _checklist.polizaSeguroOk,
-        trianguloEmergenciaOk: _checklist.trianguloEmergenciaOk,
-        tableroIndicadoresOk: _checklist.tableroIndicadoresOk,
-        switchEncendidoOk: _checklist.switchEncendidoOk,
-        controlesAcOk: _checklist.controlesAcOk,
-        defrosterOk: _checklist.defrosterOk,
-        radioOk: _checklist.radioOk,
-        volanteOk: _checklist.volanteOk,
-        bolsasAireOk: _checklist.bolsasAireOk,
-        cinturonSeguridadOk: _checklist.cinturonSeguridadOk,
-        coderasOk: _checklist.coderasOk,
-        espejoInteriorOk: _checklist.espejoInteriorOk,
-        frenoManoOk: _checklist.frenoManoOk,
-        encendedorOk: _checklist.encendedorOk,
-        guanteraOk: _checklist.guanteraOk,
-        manijasInterioresOk: _checklist.manijasInterioresOk,
-        segurosOk: _checklist.segurosOk,
-        asientosOk: _checklist.asientosOk,
-        tapetesOk: _checklist.tapetesOk,
-        nivelAceiteMotorOk: _checklist.nivelAceiteMotorOk,
-        nivelAnticongelanteOk: _checklist.nivelAnticongelanteOk,
-        nivelLiquidoFrenosOk: _checklist.nivelLiquidoFrenosOk,
-        bateriaOk: _checklist.bateriaOk,
-        bayonetaAceiteOk: _checklist.bayonetaAceiteOk,
-        taponesOk: _checklist.taponesOk,
-        bocinaClaxxonOk: _checklist.bocinaClaxxonOk,
-        radiadorOk: _checklist.radiadorOk,
-        gatoOk: _checklist.gatoOk,
-        llaveLlantasOk: _checklist.llaveLlantasOk,
-        cablesPasaCorrienteOk: _checklist.cablesPasaCorrienteOk,
-        cajaHerramientasOk: _checklist.cajaHerramientasOk,
-        dadoBirloSeguidadOk: _checklist.dadoBirloSeguidadOk,
-        calcomaniastPermisosOk: _checklist.calcomaniastPermisosOk,
-        calcomaniaVelocidadMaximaOk: _checklist.calcomaniaVelocidadMaximaOk,
-        condicionCarroceriaImagen: _condicionCarroceriaImagen, // Agregar imagen de daños
+        llantaDelanteraDerechaOk: _checkboxValues['llantaDelanteraDerechaOk'] ?? true,
+        llantaDelanteraIzquierdaOk: _checkboxValues['llantaDelanteraIzquierdaOk'] ?? true,
+        llantaDelanteraVidaOk: _checkboxValues['llantaDelanteraVidaOk'] ?? true,
+        llantaTrseraDerechaOk: _checkboxValues['llantaTrseraDerechaOk'] ?? true,
+        llantaTraseraIzquierdaOk: _checkboxValues['llantaTraseraIzquierdaOk'] ?? true,
+        llantaTraseraVidaOk: _checkboxValues['llantaTraseraVidaOk'] ?? true,
+        llantaRefaccionOk: _checkboxValues['llantaRefaccionOk'] ?? true,
+        presionAdecuadaOk: _checkboxValues['presionAdecuadaOk'] ?? true,
+        parabrisisOk: _checkboxValues['parabrisisOk'] ?? true,
+        cofreOk: _checkboxValues['cofreOk'] ?? true,
+        parrillaOk: _checkboxValues['parrillaOk'] ?? true,
+        defensasOk: _checkboxValues['defensasOk'] ?? true,
+        moldurasOk: _checkboxValues['moldurasOk'] ?? true,
+        placaOk: _checkboxValues['placaOk'] ?? true,
+        salpicaderaOk: _checkboxValues['salpicaderaOk'] ?? true,
+        antenaOk: _checkboxValues['antenaOk'] ?? true,
+        intermitentesOk: _checkboxValues['intermitentesOk'] ?? true,
+        direccionalDerechaOk: _checkboxValues['direccionalDerechaOk'] ?? true,
+        direccionalIzquierdaOk: _checkboxValues['direccionalIzquierdaOk'] ?? true,
+        luzStopOk: _checkboxValues['luzStopOk'] ?? true,
+        farosOk: _checkboxValues['farosOk'] ?? true,
+        lucesAltasOk: _checkboxValues['lucesAltasOk'] ?? true,
+        luzInteriorOk: _checkboxValues['luzInteriorOk'] ?? true,
+        calaveras: _checkboxValues['calaveras'] ?? true,
+        mataChispassOk: _checkboxValues['mataChispassOk'] ?? true,
+        alarmaOk: _checkboxValues['alarmaOk'] ?? true,
+        extintorOk: _checkboxValues['extintorOk'] ?? true,
+        botiquinOk: _checkboxValues['botiquinOk'] ?? true,
+        tarjetaCirculacionOk: _checkboxValues['tarjetaCirculacionOk'] ?? true,
+        licenciaConducirVigenteOk: _checkboxValues['licenciaConducirVigenteOk'] ?? true,
+        polizaSeguroOk: _checkboxValues['polizaSeguroOk'] ?? true,
+        trianguloEmergenciaOk: _checkboxValues['trianguloEmergenciaOk'] ?? true,
+        tableroIndicadoresOk: _checkboxValues['tableroIndicadoresOk'] ?? true,
+        switchEncendidoOk: _checkboxValues['switchEncendidoOk'] ?? true,
+        controlesAcOk: _checkboxValues['controlesAcOk'] ?? true,
+        defrosterOk: _checkboxValues['defrosterOk'] ?? true,
+        radioOk: _checkboxValues['radioOk'] ?? true,
+        volanteOk: _checkboxValues['volanteOk'] ?? true,
+        bolsasAireOk: _checkboxValues['bolsasAireOk'] ?? true,
+        cinturonSeguridadOk: _checkboxValues['cinturonSeguridadOk'] ?? true,
+        coderasOk: _checkboxValues['coderasOk'] ?? true,
+        espejoInteriorOk: _checkboxValues['espejoInteriorOk'] ?? true,
+        frenoManoOk: _checkboxValues['frenoManoOk'] ?? true,
+        encendedorOk: _checkboxValues['encendedorOk'] ?? true,
+        guanteraOk: _checkboxValues['guanteraOk'] ?? true,
+        manijasInterioresOk: _checkboxValues['manijasInterioresOk'] ?? true,
+        segurosOk: _checkboxValues['segurosOk'] ?? true,
+        asientosOk: _checkboxValues['asientosOk'] ?? true,
+        tapetesOk: _checkboxValues['tapetesOk'] ?? true,
+        nivelAceiteMotorOk: _checkboxValues['nivelAceiteMotorOk'] ?? true,
+        nivelAnticongelanteOk: _checkboxValues['nivelAnticongelanteOk'] ?? true,
+        nivelLiquidoFrenosOk: _checkboxValues['nivelLiquidoFrenosOk'] ?? true,
+        bateriaOk: _checkboxValues['bateriaOk'] ?? true,
+        bayonetaAceiteOk: _checkboxValues['bayonetaAceiteOk'] ?? true,
+        taponesOk: _checkboxValues['taponesOk'] ?? true,
+        bocinaClaxxonOk: _checkboxValues['bocinaClaxxonOk'] ?? true,
+        radiadorOk: _checkboxValues['radiadorOk'] ?? true,
+        gatoOk: _checkboxValues['gatoOk'] ?? true,
+        llaveLlantasOk: _checkboxValues['llaveLlantasOk'] ?? true,
+        cablesPasaCorrienteOk: _checkboxValues['cablesPasaCorrienteOk'] ?? true,
+        cajaHerramientasOk: _checkboxValues['cajaHerramientasOk'] ?? true,
+        dadoBirloSeguidadOk: _checkboxValues['dadoBirloSeguidadOk'] ?? true,
+        calcomaniastPermisosOk: _checkboxValues['calcomaniastPermisosOk'] ?? true,
+        calcomaniaVelocidadMaximaOk: _checkboxValues['calcomaniaVelocidadMaximaOk'] ?? true,
+        condicionCarroceriaImagen: _condicionCarroceriaImagen,
       );
 
-      // Preparar datos para enviar
-      final checklistJson = checklistCompleto.toJson();
-      
-      // Log de los datos que se enviarían
-      print('Datos checklist: ${checklistJson.keys.join(', ')}');
-      print('Imagen guardada: ${_condicionCarroceriaImagen.isNotEmpty ? 'Sí' : 'No'}');
-      print('Tamaño imagen (caracteres): ${_condicionCarroceriaImagen.length}');
+      // Enviar a la API
+      final response = await _apiService.submitCheckout(
+        ticketId: widget.ticket.id,
+        checklistData: checklistCompleto.toJson(),
+      );
 
-      // TODO: Enviar POST request a tu API
-      // await _submitChecklistToAPI(checklistJson);
+      if (!mounted) return;
+
+      if (response.success) {
+        // Actualizar ticket en storage local
+        if (response.data?.ticket != null) {
+          await _storageService.updateTicket(response.data!.ticket);
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Retornar true para indicar éxito
+      } else {
+        // Mostrar errores de validación si existen
+        String errorMsg = response.message;
+        if (response.errors != null) {
+          final errors = response.errors!.values.join('\n');
+          errorMsg += '\n$errors';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checkout completado'), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text('Error inesperado: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
-      Navigator.pop(context);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -200,14 +340,233 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Checkout'),
+        title: Text(_hasExistingChecklist ? 'Ver Checkout' : 'Realizar Checkout'),
         backgroundColor: scheme.primary,
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _hasExistingChecklist
+              ? _buildExistingChecklistView(scheme)
+              : _buildCheckoutForm(scheme),
+    );
+  }
+
+  Widget _buildExistingChecklistView(ColorScheme scheme) {
+    if (_existingChecklist == null) return const SizedBox();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Banner de información
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Checkout ya realizado',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Este ticket ya tiene un checkout registrado el ${_existingChecklist!.fecha ?? 'N/A'}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Información general
+          _buildReadOnlySection('Información General', [
+            _buildReadOnlyItem('Folio', _existingChecklist!.folio),
+            _buildReadOnlyItem('Fecha', _existingChecklist!.fecha?.toString() ?? 'N/A'),
+            _buildReadOnlyItem('Destino', _existingChecklist!.destino?.toString() ?? 'N/A'),
+            _buildReadOnlyItem('Hora de Salida', _existingChecklist!.horaSalida?.toString() ?? 'N/A'),
+            _buildReadOnlyItem('Kilometraje Inicial', '${_existingChecklist!.kilometrajeInicial ?? 0} km'),
+            _buildReadOnlyItem('Nivel Combustible', _existingChecklist!.nivelCombustibleInicial?.toString() ?? 'N/A'),
+          ]),
+
+          // Vehículo
+          _buildReadOnlySection('Vehículo', [
+            _buildReadOnlyItem('Marca', _existingChecklist!.marca?.toString() ?? 'N/A'),
+            _buildReadOnlyItem('Modelo', _existingChecklist!.modelo?.toString() ?? 'N/A'),
+            _buildReadOnlyItem('Placas', _existingChecklist!.placas?.toString() ?? 'N/A'),
+          ]),
+
+          // Resumen de inspección
+          if (_existingChecklist!.llantas != null)
+            _buildChecklistSummary('Llantas', _existingChecklist!.llantas!),
+          if (_existingChecklist!.frontal != null)
+            _buildChecklistSummary('Frontal', _existingChecklist!.frontal!),
+          if (_existingChecklist!.luces != null)
+            _buildChecklistSummary('Luces', _existingChecklist!.luces!),
+          if (_existingChecklist!.seguridad != null)
+            _buildChecklistSummary('Seguridad', _existingChecklist!.seguridad!),
+          if (_existingChecklist!.interior != null)
+            _buildChecklistSummary('Interior', _existingChecklist!.interior!),
+          if (_existingChecklist!.motor != null)
+            _buildChecklistSummary('Motor', _existingChecklist!.motor!),
+
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Volver'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlySection(String title, List<Widget> children) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Divider(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistSummary(String title, Map<String, dynamic> items) {
+    final okItems = items.entries.where((e) => e.value == true).length;
+    final totalItems = items.length;
+    final percentage = totalItems > 0 ? (okItems / totalItems * 100).round() : 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: percentage >= 80 ? Colors.green : Colors.orange,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$percentage%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: percentage / 100,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation(
+                percentage >= 80 ? Colors.green : Colors.orange,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$okItems de $totalItems elementos en buen estado',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckoutForm(ColorScheme scheme) {
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
               // Paso 1: Información del Ticket
               if (_currentStep == 1)
                 FormSectionWidget(
@@ -774,16 +1133,27 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                     if (_currentStep > 1) const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _currentStep == _totalSteps ? _submit : _nextStep,
+                        onPressed: _isSubmitting
+                            ? null
+                            : (_currentStep == _totalSteps ? _submit : _nextStep),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: scheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text(
-                          _currentStep == _totalSteps ? 'Enviar' : 'Siguiente',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Text(
+                                _currentStep == _totalSteps ? 'Enviar' : 'Siguiente',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
                   ],
@@ -792,7 +1162,6 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

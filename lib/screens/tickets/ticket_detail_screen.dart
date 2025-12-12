@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 import 'checkout_screen_new.dart';
+import '../../models/ticket_model.dart';
 
 class TicketDetailScreen extends StatelessWidget {
-  final String folio;
-  final String destination;
-  final String date;
-  final String timeStart;
-  final String? timeEnd;
-  final String vehicle;
-  final String status;
+  final TicketModel ticket;
 
+  // Constructor legacy para mantener compatibilidad
   const TicketDetailScreen({
     super.key,
-    required this.folio,
-    required this.destination,
-    required this.date,
-    required this.timeStart,
-    this.timeEnd,
-    required this.vehicle,
-    required this.status,
+    required this.ticket,
+    String? folio,
+    String? destination,
+    String? date,
+    String? timeStart,
+    String? timeEnd,
+    String? vehicle,
+    String? status,
   });
+
+  String get folio => ticket.folio;
+  String get destination => ticket.destination ?? 'Sin destino';
+  String get date => ticket.requestedDate?.toString().split(' ')[0] ?? '';
+  String get timeStart => ticket.requestedTimeStart ?? '';
+  String? get timeEnd => ticket.requestedTimeEnd;
+  String get vehicle => ticket.vehicleName;
+  String get status => ticket.status;
 
   Color _statusColor(BuildContext context) {
     switch (status.toLowerCase()) {
@@ -113,12 +118,14 @@ class TicketDetailScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const CheckoutScreenNew(),
+                            builder: (context) => CheckoutScreenNew(ticket: ticket),
                           ),
                         );
                       },
                       icon: const Icon(Icons.checklist_rtl),
-                      label: const Text('Realizar checkout'),
+                      label: Text(
+                        ticket.hasCheckout ? 'Ver checkout' : 'Realizar checkout'
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: scheme.primary,
                         foregroundColor: Colors.white,
