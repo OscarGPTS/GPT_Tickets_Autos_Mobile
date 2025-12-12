@@ -17,7 +17,12 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
   int _currentStep = 1;
   final int _totalSteps = 12;
 
-  late ChecklistModel _checklist;  String _condicionCarroceriaImagen = ''; // Base64 de imagen con daños
+  late ChecklistModel _checklist;
+  String _condicionCarroceriaImagen = ''; // Base64 de imagen con daños
+  
+  // Mapa mutable para los valores de los checkboxes
+  final Map<String, bool> _checkboxValues = {};
+  
   @override
   void initState() {
     super.initState();
@@ -33,6 +38,26 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
       kilometrajeInicial: 0,
       nivelCombustibleInicial: '1/2',
     );
+    // Inicializar todos los valores del mapa con true por defecto (mejor UX)
+    _checkboxValues.addAll({
+      'llantaDelanteraDerechaOk': true, 'llantaDelanteraIzquierdaOk': true, 'llantaDelanteraVidaOk': true,
+      'llantaTrseraDerechaOk': true, 'llantaTraseraIzquierdaOk': true, 'llantaTraseraVidaOk': true,
+      'llantaRefaccionOk': true, 'presionAdecuadaOk': true, 'parabrisisOk': true, 'cofreOk': true,
+      'parrillaOk': true, 'defensasOk': true, 'moldurasOk': true, 'placaOk': true, 'salpicaderaOk': true,
+      'antenaOk': true, 'intermitentesOk': true, 'direccionalDerechaOk': true, 'direccionalIzquierdaOk': true,
+      'luzStopOk': true, 'farosOk': true, 'lucesAltasOk': true, 'luzInteriorOk': true, 'calaveras': true,
+      'mataChispassOk': true, 'alarmaOk': true, 'extintorOk': true, 'botiquinOk': true,
+      'tarjetaCirculacionOk': true, 'licenciaConducirVigenteOk': true, 'polizaSeguroOk': true,
+      'trianguloEmergenciaOk': true, 'tableroIndicadoresOk': true, 'switchEncendidoOk': true,
+      'controlesAcOk': true, 'defrosterOk': true, 'radioOk': true, 'volanteOk': true,
+      'bolsasAireOk': true, 'cinturonSeguridadOk': true, 'coderasOk': true, 'espejoInteriorOk': true,
+      'frenoManoOk': true, 'encendedorOk': true, 'guanteraOk': true, 'manijasInterioresOk': true,
+      'segurosOk': true, 'asientosOk': true, 'tapetesOk': true, 'nivelAceiteMotorOk': true,
+      'nivelAnticongelanteOk': true, 'nivelLiquidoFrenosOk': true, 'bateriaOk': true, 'bayonetaAceiteOk': true,
+      'taponesOk': true, 'bocinaClaxxonOk': true, 'radiadorOk': true, 'gatoOk': true, 'llaveLlantasOk': true,
+      'cablesPasaCorrienteOk': true, 'cajaHerramientasOk': true, 'dadoBirloSeguidadOk': true,
+      'calcomaniastPermisosOk': true, 'calcomaniaVelocidadMaximaOk': true,
+    });
   }
 
   void _nextStep() {
@@ -336,43 +361,43 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       children: [
                         ChecklistCheckboxWidget(
                           label: 'Delantera Derecha',
-                          value: _checklist.llantaDelanteraDerechaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaDelanteraDerechaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraDerechaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Delantera Izq',
-                          value: _checklist.llantaDelanteraIzquierdaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaDelanteraIzquierdaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraIzquierdaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Delantera Vida',
-                          value: _checklist.llantaDelanteraVidaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaDelanteraVidaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraVidaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Trasera Derecha',
-                          value: _checklist.llantaTrseraDerechaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaTrseraDerechaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaTrseraDerechaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Trasera Izq',
-                          value: _checklist.llantaTraseraIzquierdaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaTraseraIzquierdaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaTraseraIzquierdaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Trasera Vida',
-                          value: _checklist.llantaTraseraVidaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaTraseraVidaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaTraseraVidaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Refacción',
-                          value: _checklist.llantaRefaccionOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['llantaRefaccionOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['llantaRefaccionOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Presión OK',
-                          value: _checklist.presionAdecuadaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['presionAdecuadaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['presionAdecuadaOk'] = v),
                         ),
                       ],
                     ),
@@ -397,43 +422,43 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       children: [
                         ChecklistCheckboxWidget(
                           label: 'Parabrisas',
-                          value: _checklist.parabrisisOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['parabrisisOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['parabrisisOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Cofre',
-                          value: _checklist.cofreOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['cofreOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['cofreOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Parrilla',
-                          value: _checklist.parrillaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['parrillaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['parrillaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Defensas',
-                          value: _checklist.defensasOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['defensasOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['defensasOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Molduras',
-                          value: _checklist.moldurasOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['moldurasOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['moldurasOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Placa',
-                          value: _checklist.placaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['placaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['placaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Salpicadera',
-                          value: _checklist.salpicaderaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['salpicaderaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['salpicaderaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Antena',
-                          value: _checklist.antenaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['antenaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['antenaOk'] = v),
                         ),
                       ],
                     ),
@@ -458,43 +483,43 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       children: [
                         ChecklistCheckboxWidget(
                           label: 'Intermitentes',
-                          value: _checklist.intermitentesOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['intermitentesOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['intermitentesOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Direccional Der',
-                          value: _checklist.direccionalDerechaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['direccionalDerechaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['direccionalDerechaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Direccional Izq',
-                          value: _checklist.direccionalIzquierdaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['direccionalIzquierdaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['direccionalIzquierdaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Luz Stop',
-                          value: _checklist.luzStopOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['luzStopOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['luzStopOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Faros',
-                          value: _checklist.farosOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['farosOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['farosOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Luces Altas',
-                          value: _checklist.lucesAltasOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['lucesAltasOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['lucesAltasOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Luz Interior',
-                          value: _checklist.luzInteriorOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['luzInteriorOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['luzInteriorOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Calaveras',
-                          value: _checklist.calaveras,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['calaveras'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['calaveras'] = v),
                         ),
                       ],
                     ),
@@ -509,49 +534,53 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                   title: 'Seguridad',
                   description: 'Verifica equipos de seguridad',
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    GridView.count(
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
                       children: [
                         ChecklistCheckboxWidget(
-                          label: 'Mata\nChispas',
-                          value: _checklist.mataChispassOk,
-                          onChanged: (v) => setState(() {}),
+                          label: 'Mata Chispas',
+                          value: _checkboxValues['mataChispassOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['mataChispassOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Alarma',
-                          value: _checklist.alarmaOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['alarmaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['alarmaOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Extintor',
-                          value: _checklist.extintorOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['extintorOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['extintorOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
                           label: 'Botiquín',
-                          value: _checklist.botiquinOk,
-                          onChanged: (v) => setState(() {}),
+                          value: _checkboxValues['botiquinOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['botiquinOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
-                          label: 'Tarjeta\nCirculación',
-                          value: _checklist.tarjetaCirculacionOk,
-                          onChanged: (v) => setState(() {}),
+                          label: 'Tarjeta Circ',
+                          value: _checkboxValues['tarjetaCirculacionOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['tarjetaCirculacionOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
-                          label: 'Licencia\nVigente',
-                          value: _checklist.licenciaConducirVigenteOk,
-                          onChanged: (v) => setState(() {}),
+                          label: 'Licencia OK',
+                          value: _checkboxValues['licenciaConducirVigenteOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['licenciaConducirVigenteOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
-                          label: 'Póliza\nSeguro',
-                          value: _checklist.polizaSeguroOk,
-                          onChanged: (v) => setState(() {}),
+                          label: 'Póliza Seg',
+                          value: _checkboxValues['polizaSeguroOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['polizaSeguroOk'] = v),
                         ),
                         ChecklistCheckboxWidget(
-                          label: 'Triángulo\nEmergencia',
-                          value: _checklist.trianguloEmergenciaOk,
-                          onChanged: (v) => setState(() {}),
+                          label: 'Triángulo',
+                          value: _checkboxValues['trianguloEmergenciaOk'] ?? false,
+                          onChanged: (v) => setState(() => _checkboxValues['trianguloEmergenciaOk'] = v),
                         ),
                       ],
                     ),
@@ -566,27 +595,31 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                   title: 'Interior',
                   description: 'Verifica componentes interiores',
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    GridView.count(
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
                       children: [
-                        ChecklistCheckboxWidget(label: 'Tablero', value: _checklist.tableroIndicadoresOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Switch', value: _checklist.switchEncendidoOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'AC', value: _checklist.controlesAcOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Defroster', value: _checklist.defrosterOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Radio', value: _checklist.radioOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Volante', value: _checklist.volanteOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Bolsas\nAire', value: _checklist.bolsasAireOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Cinturón', value: _checklist.cinturonSeguridadOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Coderas', value: _checklist.coderasOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Espejo', value: _checklist.espejoInteriorOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Freno\nMano', value: _checklist.frenoManoOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Encendedor', value: _checklist.encendedorOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Guantera', value: _checklist.guanteraOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Manijas', value: _checklist.manijasInterioresOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Seguros', value: _checklist.segurosOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Asientos', value: _checklist.asientosOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Tapetes', value: _checklist.tapetesOk, onChanged: (v) => setState(() {})),
+                        ChecklistCheckboxWidget(label: 'Tablero', value: _checkboxValues['tableroIndicadoresOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['tableroIndicadoresOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Switch', value: _checkboxValues['switchEncendidoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['switchEncendidoOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'AC', value: _checkboxValues['controlesAcOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['controlesAcOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Defroster', value: _checkboxValues['defrosterOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['defrosterOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Radio', value: _checkboxValues['radioOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['radioOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Volante', value: _checkboxValues['volanteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['volanteOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Bolsas Aire', value: _checkboxValues['bolsasAireOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bolsasAireOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Cinturón', value: _checkboxValues['cinturonSeguridadOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cinturonSeguridadOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Coderas', value: _checkboxValues['coderasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['coderasOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Espejo', value: _checkboxValues['espejoInteriorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['espejoInteriorOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Freno Mano', value: _checkboxValues['frenoManoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['frenoManoOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Encendedor', value: _checkboxValues['encendedorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['encendedorOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Guantera', value: _checkboxValues['guanteraOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['guanteraOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Manijas', value: _checkboxValues['manijasInterioresOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['manijasInterioresOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Seguros', value: _checkboxValues['segurosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['segurosOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Asientos', value: _checkboxValues['asientosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['asientosOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Tapetes', value: _checkboxValues['tapetesOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['tapetesOk'] = v)),
                       ],
                     ),
                   ],
@@ -600,18 +633,22 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                   title: 'Motor',
                   description: 'Verifica componentes del motor',
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    GridView.count(
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
                       children: [
-                        ChecklistCheckboxWidget(label: 'Aceite', value: _checklist.nivelAceiteMotorOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Anticongelante', value: _checklist.nivelAnticongelanteOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Frenos', value: _checklist.nivelLiquidoFrenosOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Batería', value: _checklist.bateriaOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Bayoneta', value: _checklist.bayonetaAceiteOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Tapones', value: _checklist.taponesOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Claxon', value: _checklist.bocinaClaxxonOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Radiador', value: _checklist.radiadorOk, onChanged: (v) => setState(() {})),
+                        ChecklistCheckboxWidget(label: 'Aceite', value: _checkboxValues['nivelAceiteMotorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelAceiteMotorOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Anticongelante', value: _checkboxValues['nivelAnticongelanteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelAnticongelanteOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Frenos', value: _checkboxValues['nivelLiquidoFrenosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelLiquidoFrenosOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Batería', value: _checkboxValues['bateriaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bateriaOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Bayoneta', value: _checkboxValues['bayonetaAceiteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bayonetaAceiteOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Tapones', value: _checkboxValues['taponesOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['taponesOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Claxon', value: _checkboxValues['bocinaClaxxonOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bocinaClaxxonOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Radiador', value: _checkboxValues['radiadorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['radiadorOk'] = v)),
                       ],
                     ),
                   ],
@@ -625,15 +662,19 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                   title: 'Herramientas',
                   description: 'Verifica equipos y herramientas',
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    GridView.count(
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
                       children: [
-                        ChecklistCheckboxWidget(label: 'Gato', value: _checklist.gatoOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Llave\nRuedas', value: _checklist.llaveLlantasOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Cables\nCorriente', value: _checklist.cablesPasaCorrienteOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Caja\nHerramientas', value: _checklist.cajaHerramientasOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Birlo\nSeguridad', value: _checklist.dadoBirloSeguidadOk, onChanged: (v) => setState(() {})),
+                        ChecklistCheckboxWidget(label: 'Gato', value: _checkboxValues['gatoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['gatoOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Llave Ruedas', value: _checkboxValues['llaveLlantasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['llaveLlantasOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Cables', value: _checkboxValues['cablesPasaCorrienteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cablesPasaCorrienteOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Caja Herr', value: _checkboxValues['cajaHerramientasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cajaHerramientasOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Birlo Seg', value: _checkboxValues['dadoBirloSeguidadOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['dadoBirloSeguidadOk'] = v)),
                       ],
                     ),
                   ],
@@ -647,12 +688,16 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                   title: 'Calcomanías',
                   description: 'Verifica pegatinas y calcomanías',
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    GridView.count(
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
                       children: [
-                        ChecklistCheckboxWidget(label: 'Permisos', value: _checklist.calcomaniastPermisosOk, onChanged: (v) => setState(() {})),
-                        ChecklistCheckboxWidget(label: 'Velocidad\nMáxima', value: _checklist.calcomaniaVelocidadMaximaOk, onChanged: (v) => setState(() {})),
+                        ChecklistCheckboxWidget(label: 'Permisos', value: _checkboxValues['calcomaniastPermisosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['calcomaniastPermisosOk'] = v)),
+                        ChecklistCheckboxWidget(label: 'Veloc Máx', value: _checkboxValues['calcomaniaVelocidadMaximaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['calcomaniaVelocidadMaximaOk'] = v)),
                       ],
                     ),
                   ],
@@ -732,6 +777,7 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         onPressed: _currentStep == _totalSteps ? _submit : _nextStep,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: scheme.primary,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(

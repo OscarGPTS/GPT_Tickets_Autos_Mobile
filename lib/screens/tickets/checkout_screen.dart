@@ -184,6 +184,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         onPressed: _currentStep == _totalSteps ? _submit : _nextStep,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: scheme.primary,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(

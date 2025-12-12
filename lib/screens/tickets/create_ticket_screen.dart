@@ -325,6 +325,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                             onPressed: _currentStep == _totalSteps ? _submitForm : _nextStep,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: scheme.primary,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: Text(

@@ -121,6 +121,7 @@ class TicketDetailScreen extends StatelessWidget {
                       label: const Text('Realizar checkout'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: scheme.primary,
+                        foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(48),
                       ),
                     ),

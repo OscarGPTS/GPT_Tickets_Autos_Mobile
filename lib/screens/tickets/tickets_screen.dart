@@ -273,6 +273,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
           );
         },
         backgroundColor: scheme.primary,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.article),
         label: const Text('Ver detalle de ticket'),
       ),
