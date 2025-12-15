@@ -10,6 +10,7 @@ class FormInputWidget extends StatelessWidget {
   final String? Function(String?)? validator;
   final int maxLines;
   final Widget? prefixIcon;
+  final bool readOnly;
 
   const FormInputWidget({
     super.key,
@@ -22,6 +23,7 @@ class FormInputWidget extends StatelessWidget {
     this.validator,
     this.maxLines = 1,
     this.prefixIcon,
+    this.readOnly = false,
   });
 
   @override
@@ -56,7 +58,8 @@ class FormInputWidget extends StatelessWidget {
         const SizedBox(height: 8),
         TextFormField(
           initialValue: value,
-          onChanged: onChanged,
+          onChanged: readOnly ? null : onChanged,
+          enabled: !readOnly,
           keyboardType: keyboardType,
           maxLines: maxLines,
           minLines: maxLines == 1 ? 1 : null,
@@ -65,7 +68,7 @@ class FormInputWidget extends StatelessWidget {
             hintText: hint,
             prefixIcon: prefixIcon,
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: readOnly ? Colors.grey.shade100 : Colors.grey.shade50,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,

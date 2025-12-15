@@ -71,9 +71,9 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
       children: [
         const Text(
           'Dibuja los daños del vehículo',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         // Tabs para seleccionar tipo de vehículo
         Container(
           decoration: BoxDecoration(
@@ -91,20 +91,20 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
             unselectedLabelColor: Colors.grey.shade700,
             tabs: const [
               Tab(
-                icon: Icon(Icons.local_shipping),
+                icon: Icon(Icons.local_shipping, size: 20),
                 text: 'Camioneta',
               ),
               Tab(
-                icon: Icon(Icons.directions_car),
+                icon: Icon(Icons.directions_car, size: 20),
                 text: 'Auto',
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (_imageLoaded && _vehicleImage != null)
           SizedBox(
-            height: 650,
+            height: 480,
             child: TabBarView(
               controller: _tabController,
               physics: const NeverScrollableScrollPhysics(), // Desactivar swipe entre tabs
@@ -248,36 +248,36 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isDrawingMode = !_isDrawingMode;
-                  });
-                },
-                icon: Icon(
-                  _isDrawingMode ? Icons.zoom_in : Icons.pan_tool,
-                  color: _isDrawingMode ? Colors.red : Colors.blue,
-                ),
-                tooltip: _isDrawingMode ? 'Modo: Dibujar' : 'Modo: Navegar (Zoom)',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _isDrawingMode = !_isDrawingMode;
+                });
+              },
+              icon: Icon(
+                _isDrawingMode ? Icons.zoom_in : Icons.pan_tool,
+                color: _isDrawingMode ? Colors.red : Colors.blue,
+                size: 20,
               ),
-              IconButton(
-                onPressed: _resetZoom,
-                icon: const Icon(Icons.zoom_out_map, size: 18),
-                tooltip: 'Resetear zoom',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+              tooltip: _isDrawingMode ? 'Modo: Dibujar' : 'Modo: Navegar (Zoom)',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            IconButton(
+              onPressed: _resetZoom,
+              icon: const Icon(Icons.zoom_out_map, size: 16),
+              tooltip: 'Resetear zoom',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
@@ -306,9 +306,9 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Container(
-            height: 450,
+            height: 320,
             decoration: BoxDecoration(
               border: Border.all(
                 color: _isDrawingMode ? Colors.red.shade300 : Colors.blue.shade300,
@@ -359,23 +359,23 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
                         version: _strokeVersion,
                         vehicleType: widget.vehicleType,
                       ),
-                      size: Size(MediaQuery.of(context).size.width - 32, 450),
+                      size: Size(MediaQuery.of(context).size.width - 32, 320),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _undoStroke,
-                  icon: const Icon(Icons.undo, size: 18),
-                  label: const Text('Deshacer', style: TextStyle(fontSize: 12)),
+                  icon: const Icon(Icons.undo, size: 16),
+                  label: const Text('Deshacer', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
@@ -383,10 +383,10 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _clearCanvas,
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('Limpiar', style: TextStyle(fontSize: 12)),
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('Limpiar', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
@@ -394,18 +394,17 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _saveCanvas,
-                  icon: const Icon(Icons.save, size: 18),
-                  label: const Text('Guardar', style: TextStyle(fontSize: 12)),
+                  icon: const Icon(Icons.save, size: 16),
+                  label: const Text('Guardar', style: TextStyle(fontSize: 11)),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
             ],
           ),
         ],
-      ),
-    );
+      );
   }
 }
 

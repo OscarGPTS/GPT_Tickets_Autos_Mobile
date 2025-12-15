@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 class ChecklistCheckboxWidget extends StatelessWidget {
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   final int? flex;
 
   const ChecklistCheckboxWidget({
     super.key,
     required this.label,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
     this.flex,
   });
 
@@ -30,7 +30,7 @@ class ChecklistCheckboxWidget extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => onChanged(!value),
+          onTap: onChanged != null ? () => onChanged?.call(!value) : null,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.all(6),
@@ -42,7 +42,7 @@ class ChecklistCheckboxWidget extends StatelessWidget {
                   scale: 0.8,
                   child: Checkbox(
                     value: value,
-                    onChanged: (v) => onChanged(v ?? false),
+                    onChanged: onChanged != null ? (v) => onChanged?.call(v ?? false) : null,
                     activeColor: scheme.primary,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,

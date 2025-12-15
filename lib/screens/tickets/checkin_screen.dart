@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/checklist_model.dart';
 import '../../models/ticket_model.dart';
-import '../../services/api_service.dart';
+import '../../services/checkin_service.dart';
 import '../../services/storage_service.dart';
 import 'widgets/form_section_widget.dart';
 import 'widgets/form_input_widget.dart';
@@ -22,305 +22,109 @@ class _CheckinScreenState extends State<CheckinScreen> {
   int _currentStep = 1;
   final int _totalSteps = 12;
 
-  final ApiService _apiService = ApiService();
+  final CheckinService _checkinService = CheckinService();
   final StorageService _storageService = StorageService();
   bool _isSubmitting = false;
   bool _isLoading = true;
 
-  late ChecklistModel _checklist;
-  ChecklistResponseModel? _existingCheckout; // Checkout para precargar datos
-  ChecklistResponseModel? _existingCheckin; // Checkin existente
   bool _hasExistingCheckin = false;
-  String _condicionCarroceriaImagen = ''; // Base64 de imagen con daños
   
-  // Mapa mutable para los valores de los checkboxes
-  final Map<String, bool> _checkboxValues = {};
+  // Copia local del ticket para trabajar
+  late TicketModel _ticket;
+  
+  // Map con todos los datos del checklist (se envía directo al API)
+  late Map<String, dynamic> _checklistData;
   
   @override
   void initState() {
     super.initState();
+    _ticket = widget.ticket;
+    
+    // Inicializar datos del checklist
+    _checklistData = {
+      'ticket_id': _ticket.id,
+      'tipo_inspeccion': 'entrada',
+      'folio': _ticket.folio,
+      'destino': _ticket.destination ?? '',
+      'modelo': _ticket.vehicle?.model ?? '',
+      'placas': _ticket.vehicle?.plates ?? '',
+      'marca': _ticket.vehicle?.brand ?? '',
+      // Checkboxes por defecto en true
+      'llanta_delantera_derecha': true,
+      'llanta_delantera_izquierda': true,
+      'llanta_delantera_vida': true,
+      'llanta_trasera_derecha': true,
+      'llanta_trasera_izquierda': true,
+      'llanta_trasera_vida': true,
+      'llanta_refaccion': true,
+      'presion_adecuada': true,
+      'parabrisas': true,
+      'cofre': true,
+      'parrilla': true,
+      'defensas': true,
+      'molduras': true,
+      'placa': true,
+      'salpicadera': true,
+      'antena': true,
+      'intermitentes': true,
+      'direccional_derecha': true,
+      'direccional_izquierda': true,
+      'luz_stop': true,
+      'faros': true,
+      'luces_altas': true,
+      'luz_interior': true,
+      'calaveras_buen_estado': true,
+      'mata_chispas': true,
+      'alarma': true,
+      'extintor': true,
+      'botiquin': true,
+      'tarjeta_circulacion': true,
+      'licencia_conducir_vigente': true,
+      'poliza_seguro': true,
+      'triangulo_emergencia': true,
+      'tablero_indicadores': true,
+      'switch_encendido': true,
+      'controles_ac': true,
+      'defroster': true,
+      'radio': true,
+      'volante': true,
+      'bolsas_aire': true,
+      'cintulon_seguridad': true,
+      'coderas': true,
+      'espejo_interior': true,
+      'freno_mano': true,
+      'encendedor': true,
+      'guantera': true,
+      'manijas_interiores': true,
+      'seguros': true,
+      'asientos': true,
+      'tapetes_delanteros_traseros': true,
+      'nivel_aceite_motor': true,
+      'nivel_anticongelante': true,
+      'nivel_liquido_frenos': true,
+      'bateria': true,
+      'bayoneta_aceite_motor': true,
+      'tapones': true,
+      'bocina_claxon': true,
+      'radiador': true,
+      'gato': true,
+      'llave_ruedas': true,
+      'cables_pasa_corriente': true,
+      'caja_bolsa_herramientas': true,
+      'dado_birlo_seguridad': true,
+      'calcomanias_permisos': true,
+      'calcomania_velocidad_maxima': true,
+    };
+    
     _loadChecklistData();
   }
 
   Future<void> _loadChecklistData() async {
     setState(() => _isLoading = true);
-
     try {
-      // Verificar si el ticket ya tiene checkin
-      _existingCheckin = widget.ticket.checkinChecklist;
-      _hasExistingCheckin = _existingCheckin?.exists ?? false;
-
-      // Obtener checkout para precargar
-      _existingCheckout = widget.ticket.checkoutChecklist;
-
-      // Inicializar checklist base con datos del ticket
-      _checklist = ChecklistModel(
-        ticketId: widget.ticket.id,
-        tipoInspeccion: 'entrada', // CHECK-IN es entrada
-        folio: int.tryParse(widget.ticket.folio.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
-        fecha: DateTime.now().toString().split(' ')[0],
-        destino: widget.ticket.destination ?? '',
-        modelo: widget.ticket.vehicle?.model ?? '',
-        placas: widget.ticket.vehicle?.plates ?? '',
-        marca: widget.ticket.vehicle?.brand ?? '',
-        kilometrajeInicial: 0.0,
-        nivelCombustibleInicial: '1/2',
-      );
-
-      // Si ya existe checkin, cargar sus valores
-      if (_hasExistingCheckin && _existingCheckin != null) {
-        _loadExistingCheckinValues();
-      } else if (_existingCheckout != null) {
-        // Si no existe checkin pero sí checkout, precargar desde checkout
-        _preloadFromCheckout();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar datos: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _hasExistingCheckin = _ticket.checkinChecklist?.exists ?? false;
     } finally {
       setState(() => _isLoading = false);
-    }
-  }
-
-  void _loadExistingCheckinValues() {
-    if (_existingCheckin == null) return;
-
-    // Cargar valores desde checkin existente (mismo código que checkout)
-    final llantas = _existingCheckin!.llantas;
-    if (llantas != null) {
-      _checkboxValues['llantaDelanteraDerechaOk'] = llantas['delantera_derecha'] ?? false;
-      _checkboxValues['llantaDelanteraIzquierdaOk'] = llantas['delantera_izquierda'] ?? false;
-      _checkboxValues['llantaDelanteraVidaOk'] = llantas['delantera_vida'] ?? false;
-      _checkboxValues['llantaTrseraDerechaOk'] = llantas['trasera_derecha'] ?? false;
-      _checkboxValues['llantaTraseraIzquierdaOk'] = llantas['trasera_izquierda'] ?? false;
-      _checkboxValues['llantaTraseraVidaOk'] = llantas['trasera_vida'] ?? false;
-      _checkboxValues['llantaRefaccionOk'] = llantas['refaccion'] ?? false;
-      _checkboxValues['presionAdecuadaOk'] = llantas['presion_adecuada'] ?? false;
-    }
-
-    final frontal = _existingCheckin!.frontal;
-    if (frontal != null) {
-      _checkboxValues['parabrisisOk'] = frontal['parabrisas'] ?? false;
-      _checkboxValues['cofreOk'] = frontal['cofre'] ?? false;
-      _checkboxValues['parrillaOk'] = frontal['parrilla'] ?? false;
-      _checkboxValues['defensasOk'] = frontal['defensas'] ?? false;
-      _checkboxValues['moldurasOk'] = frontal['molduras'] ?? false;
-      _checkboxValues['placaOk'] = frontal['placa'] ?? false;
-      _checkboxValues['salpicaderaOk'] = frontal['salpicadera'] ?? false;
-      _checkboxValues['antenaOk'] = frontal['antena'] ?? false;
-    }
-
-    // Continuar con las demás secciones...
-    final luces = _existingCheckin!.luces;
-    if (luces != null) {
-      _checkboxValues['intermitentesOk'] = luces['intermitentes'] ?? false;
-      _checkboxValues['direccionalDerechaOk'] = luces['direccional_derecha'] ?? false;
-      _checkboxValues['direccionalIzquierdaOk'] = luces['direccional_izquierda'] ?? false;
-      _checkboxValues['luzStopOk'] = luces['luz_stop'] ?? false;
-      _checkboxValues['farosOk'] = luces['faros'] ?? false;
-      _checkboxValues['lucesAltasOk'] = luces['luces_altas'] ?? false;
-      _checkboxValues['luzInteriorOk'] = luces['luz_interior'] ?? false;
-      _checkboxValues['calaveras'] = luces['calaveras_buen_estado'] ?? false;
-    }
-
-    final seguridad = _existingCheckin!.seguridad;
-    if (seguridad != null) {
-      _checkboxValues['mataChispassOk'] = seguridad['mata_chispas'] ?? false;
-      _checkboxValues['alarmaOk'] = seguridad['alarma'] ?? false;
-      _checkboxValues['extintorOk'] = seguridad['extintor'] ?? false;
-      _checkboxValues['botiquinOk'] = seguridad['botiquin'] ?? false;
-      _checkboxValues['tarjetaCirculacionOk'] = seguridad['tarjeta_circulacion'] ?? false;
-      _checkboxValues['licenciaConducirVigenteOk'] = seguridad['licencia_conducir_vigente'] ?? false;
-      _checkboxValues['polizaSeguroOk'] = seguridad['poliza_seguro'] ?? false;
-      _checkboxValues['trianguloEmergenciaOk'] = seguridad['triangulo_emergencia'] ?? false;
-    }
-
-    final interior = _existingCheckin!.interior;
-    if (interior != null) {
-      _checkboxValues['tableroIndicadoresOk'] = interior['tablero_indicadores'] ?? false;
-      _checkboxValues['switchEncendidoOk'] = interior['switch_encendido'] ?? false;
-      _checkboxValues['controlesAcOk'] = interior['controles_ac'] ?? false;
-      _checkboxValues['defrosterOk'] = interior['defroster'] ?? false;
-      _checkboxValues['radioOk'] = interior['radio'] ?? false;
-      _checkboxValues['volanteOk'] = interior['volante'] ?? false;
-      _checkboxValues['bolsasAireOk'] = interior['bolsas_aire'] ?? false;
-      _checkboxValues['cinturonSeguridadOk'] = interior['cintulon_seguridad'] ?? false;
-      _checkboxValues['coderasOk'] = interior['coderas'] ?? false;
-      _checkboxValues['espejoInteriorOk'] = interior['espejo_interior'] ?? false;
-      _checkboxValues['frenoManoOk'] = interior['freno_mano'] ?? false;
-      _checkboxValues['encendedorOk'] = interior['encendedor'] ?? false;
-      _checkboxValues['guanteraOk'] = interior['guantera'] ?? false;
-      _checkboxValues['manijasInterioresOk'] = interior['manijas_interiores'] ?? false;
-      _checkboxValues['segurosOk'] = interior['seguros'] ?? false;
-      _checkboxValues['asientosOk'] = interior['asientos'] ?? false;
-      _checkboxValues['tapetesOk'] = interior['tapetes_delanteros_traseros'] ?? false;
-    }
-
-    final motor = _existingCheckin!.motor;
-    if (motor != null) {
-      _checkboxValues['nivelAceiteMotorOk'] = motor['nivel_aceite_motor'] ?? false;
-      _checkboxValues['nivelAnticongelanteOk'] = motor['nivel_anticongelante'] ?? false;
-      _checkboxValues['nivelLiquidoFrenosOk'] = motor['nivel_liquido_frenos'] ?? false;
-      _checkboxValues['bateriaOk'] = motor['bateria'] ?? false;
-      _checkboxValues['bayonetaAceiteOk'] = motor['bayoneta_aceite_motor'] ?? false;
-      _checkboxValues['taponesOk'] = motor['tapones'] ?? false;
-      _checkboxValues['bocinaClaxxonOk'] = motor['bocina_claxon'] ?? false;
-      _checkboxValues['radiadorOk'] = motor['radiador'] ?? false;
-    }
-
-    final herramienta = _existingCheckin!.herramienta;
-    if (herramienta != null) {
-      _checkboxValues['gatoOk'] = herramienta['gato'] ?? false;
-      _checkboxValues['llaveLlantasOk'] = herramienta['llave_ruedas'] ?? false;
-      _checkboxValues['cablesPasaCorrienteOk'] = herramienta['cables_pasa_corriente'] ?? false;
-      _checkboxValues['cajaHerramientasOk'] = herramienta['caja_bolsa_herramientas'] ?? false;
-      _checkboxValues['dadoBirloSeguidadOk'] = herramienta['dado_birlo_seguridad'] ?? false;
-    }
-
-    final calcomanias = _existingCheckin!.calcomanias;
-    if (calcomanias != null) {
-      _checkboxValues['calcomaniastPermisosOk'] = calcomanias['calcomanias_permisos'] ?? false;
-      _checkboxValues['calcomaniaVelocidadMaximaOk'] = calcomanias['calcomania_velocidad_maxima'] ?? false;
-    }
-  }
-
-  void _preloadFromCheckout() {
-    if (_existingCheckout == null) return;
-
-    // Precargar todos los valores desde el checkout
-    final llantas = _existingCheckout!.llantas;
-    if (llantas != null) {
-      _checkboxValues['llantaDelanteraDerechaOk'] = llantas['delantera_derecha'] ?? true;
-      _checkboxValues['llantaDelanteraIzquierdaOk'] = llantas['delantera_izquierda'] ?? true;
-      _checkboxValues['llantaDelanteraVidaOk'] = llantas['delantera_vida'] ?? true;
-      _checkboxValues['llantaTrseraDerechaOk'] = llantas['trasera_derecha'] ?? true;
-      _checkboxValues['llantaTraseraIzquierdaOk'] = llantas['trasera_izquierda'] ?? true;
-      _checkboxValues['llantaTraseraVidaOk'] = llantas['trasera_vida'] ?? true;
-      _checkboxValues['llantaRefaccionOk'] = llantas['refaccion'] ?? true;
-      _checkboxValues['presionAdecuadaOk'] = llantas['presion_adecuada'] ?? true;
-    }
-
-    final frontal = _existingCheckout!.frontal;
-    if (frontal != null) {
-      _checkboxValues['parabrisisOk'] = frontal['parabrisas'] ?? true;
-      _checkboxValues['cofreOk'] = frontal['cofre'] ?? true;
-      _checkboxValues['parrillaOk'] = frontal['parrilla'] ?? true;
-      _checkboxValues['defensasOk'] = frontal['defensas'] ?? true;
-      _checkboxValues['moldurasOk'] = frontal['molduras'] ?? true;
-      _checkboxValues['placaOk'] = frontal['placa'] ?? true;
-      _checkboxValues['salpicaderaOk'] = frontal['salpicadera'] ?? true;
-      _checkboxValues['antenaOk'] = frontal['antena'] ?? true;
-    }
-
-    final luces = _existingCheckout!.luces;
-    if (luces != null) {
-      _checkboxValues['intermitentesOk'] = luces['intermitentes'] ?? true;
-      _checkboxValues['direccionalDerechaOk'] = luces['direccional_derecha'] ?? true;
-      _checkboxValues['direccionalIzquierdaOk'] = luces['direccional_izquierda'] ?? true;
-      _checkboxValues['luzStopOk'] = luces['luz_stop'] ?? true;
-      _checkboxValues['farosOk'] = luces['faros'] ?? true;
-      _checkboxValues['lucesAltasOk'] = luces['luces_altas'] ?? true;
-      _checkboxValues['luzInteriorOk'] = luces['luz_interior'] ?? true;
-      _checkboxValues['calaveras'] = luces['calaveras_buen_estado'] ?? true;
-    }
-
-    final seguridad = _existingCheckout!.seguridad;
-    if (seguridad != null) {
-      _checkboxValues['mataChispassOk'] = seguridad['mata_chispas'] ?? true;
-      _checkboxValues['alarmaOk'] = seguridad['alarma'] ?? true;
-      _checkboxValues['extintorOk'] = seguridad['extintor'] ?? true;
-      _checkboxValues['botiquinOk'] = seguridad['botiquin'] ?? true;
-      _checkboxValues['tarjetaCirculacionOk'] = seguridad['tarjeta_circulacion'] ?? true;
-      _checkboxValues['licenciaConducirVigenteOk'] = seguridad['licencia_conducir_vigente'] ?? true;
-      _checkboxValues['polizaSeguroOk'] = seguridad['poliza_seguro'] ?? true;
-      _checkboxValues['trianguloEmergenciaOk'] = seguridad['triangulo_emergencia'] ?? true;
-    }
-
-    final interior = _existingCheckout!.interior;
-    if (interior != null) {
-      _checkboxValues['tableroIndicadoresOk'] = interior['tablero_indicadores'] ?? true;
-      _checkboxValues['switchEncendidoOk'] = interior['switch_encendido'] ?? true;
-      _checkboxValues['controlesAcOk'] = interior['controles_ac'] ?? true;
-      _checkboxValues['defrosterOk'] = interior['defroster'] ?? true;
-      _checkboxValues['radioOk'] = interior['radio'] ?? true;
-      _checkboxValues['volanteOk'] = interior['volante'] ?? true;
-      _checkboxValues['bolsasAireOk'] = interior['bolsas_aire'] ?? true;
-      _checkboxValues['cinturonSeguridadOk'] = interior['cintulon_seguridad'] ?? true;
-      _checkboxValues['coderasOk'] = interior['coderas'] ?? true;
-      _checkboxValues['espejoInteriorOk'] = interior['espejo_interior'] ?? true;
-      _checkboxValues['frenoManoOk'] = interior['freno_mano'] ?? true;
-      _checkboxValues['encendedorOk'] = interior['encendedor'] ?? true;
-      _checkboxValues['guanteraOk'] = interior['guantera'] ?? true;
-      _checkboxValues['manijasInterioresOk'] = interior['manijas_interiores'] ?? true;
-      _checkboxValues['segurosOk'] = interior['seguros'] ?? true;
-      _checkboxValues['asientosOk'] = interior['asientos'] ?? true;
-      _checkboxValues['tapetesOk'] = interior['tapetes_delanteros_traseros'] ?? true;
-    }
-
-    final motor = _existingCheckout!.motor;
-    if (motor != null) {
-      _checkboxValues['nivelAceiteMotorOk'] = motor['nivel_aceite_motor'] ?? true;
-      _checkboxValues['nivelAnticongelanteOk'] = motor['nivel_anticongelante'] ?? true;
-      _checkboxValues['nivelLiquidoFrenosOk'] = motor['nivel_liquido_frenos'] ?? true;
-      _checkboxValues['bateriaOk'] = motor['bateria'] ?? true;
-      _checkboxValues['bayonetaAceiteOk'] = motor['bayoneta_aceite_motor'] ?? true;
-      _checkboxValues['taponesOk'] = motor['tapones'] ?? true;
-      _checkboxValues['bocinaClaxxonOk'] = motor['bocina_claxon'] ?? true;
-      _checkboxValues['radiadorOk'] = motor['radiador'] ?? true;
-    }
-
-    final herramienta = _existingCheckout!.herramienta;
-    if (herramienta != null) {
-      _checkboxValues['gatoOk'] = herramienta['gato'] ?? true;
-      _checkboxValues['llaveLlantasOk'] = herramienta['llave_ruedas'] ?? true;
-      _checkboxValues['cablesPasaCorrienteOk'] = herramienta['cables_pasa_corriente'] ?? true;
-      _checkboxValues['cajaHerramientasOk'] = herramienta['caja_bolsa_herramientas'] ?? true;
-      _checkboxValues['dadoBirloSeguidadOk'] = herramienta['dado_birlo_seguridad'] ?? true;
-    }
-
-    final calcomanias = _existingCheckout!.calcomanias;
-    if (calcomanias != null) {
-      _checkboxValues['calcomaniastPermisosOk'] = calcomanias['calcomanias_permisos'] ?? true;
-      _checkboxValues['calcomaniaVelocidadMaximaOk'] = calcomanias['calcomania_velocidad_maxima'] ?? true;
-    }
-
-    // Precargar imagen del checkout si existe
-    final observaciones = _existingCheckout!.observaciones;
-    if (observaciones != null && observaciones['imagen_danos'] != null) {
-      _condicionCarroceriaImagen = observaciones['imagen_danos'] as String;
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_isLoading && _checkboxValues.isEmpty && !_hasExistingCheckin && _existingCheckout == null) {
-      // Si no hay checkout ni checkin, inicializar con valores por defecto
-      _checkboxValues.addAll({
-        'llantaDelanteraDerechaOk': true, 'llantaDelanteraIzquierdaOk': true, 'llantaDelanteraVidaOk': true,
-        'llantaTrseraDerechaOk': true, 'llantaTraseraIzquierdaOk': true, 'llantaTraseraVidaOk': true,
-        'llantaRefaccionOk': true, 'presionAdecuadaOk': true, 'parabrisisOk': true, 'cofreOk': true,
-        'parrillaOk': true, 'defensasOk': true, 'moldurasOk': true, 'placaOk': true, 'salpicaderaOk': true,
-        'antenaOk': true, 'intermitentesOk': true, 'direccionalDerechaOk': true, 'direccionalIzquierdaOk': true,
-        'luzStopOk': true, 'farosOk': true, 'lucesAltasOk': true, 'luzInteriorOk': true, 'calaveras': true,
-        'mataChispassOk': true, 'alarmaOk': true, 'extintorOk': true, 'botiquinOk': true,
-        'tarjetaCirculacionOk': true, 'licenciaConducirVigenteOk': true, 'polizaSeguroOk': true, 
-        'trianguloEmergenciaOk': true, 'tableroIndicadoresOk': true, 'switchEncendidoOk': true,
-        'controlesAcOk': true, 'defrosterOk': true, 'radioOk': true, 'volanteOk': true, 'bolsasAireOk': true,
-        'cinturonSeguridadOk': true, 'coderasOk': true, 'espejoInteriorOk': true, 'frenoManoOk': true, 
-        'encendedorOk': true, 'guanteraOk': true, 'manijasInterioresOk': true, 'segurosOk': true, 
-        'asientosOk': true, 'tapetesOk': true, 'nivelAceiteMotorOk': true, 'nivelAnticongelanteOk': true,
-        'nivelLiquidoFrenosOk': true, 'bateriaOk': true, 'bayonetaAceiteOk': true, 'taponesOk': true,
-        'bocinaClaxxonOk': true, 'radiadorOk': true, 'gatoOk': true, 'llaveLlantasOk': true,
-        'cablesPasaCorrienteOk': true, 'cajaHerramientasOk': true, 'dadoBirloSeguidadOk': true,
-        'calcomaniastPermisosOk': true, 'calcomaniaVelocidadMaximaOk': true,
-      });
     }
   }
 
@@ -345,92 +149,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final checklistCompleto = ChecklistModel(
-        ticketId: _checklist.ticketId,
-        tipoInspeccion: 'entrada', // CHECK-IN
-        folio: _checklist.folio,
-        fecha: _checklist.fecha,
-        destino: _checklist.destino,
-        modelo: _checklist.modelo,
-        placas: _checklist.placas,
-        marca: _checklist.marca,
-        horaSalida: _checklist.horaSalida,
-        horaEntrada: _checklist.horaEntrada,
-        kilometrajeInicial: _checklist.kilometrajeInicial,
-        kilometrajeFinal: _checklist.kilometrajeFinal,
-        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-        nivelCombustibleFinal: _checklist.nivelCombustibleFinal,
-        llantaDelanteraDerechaOk: _checkboxValues['llantaDelanteraDerechaOk'] ?? true,
-        llantaDelanteraIzquierdaOk: _checkboxValues['llantaDelanteraIzquierdaOk'] ?? true,
-        llantaDelanteraVidaOk: _checkboxValues['llantaDelanteraVidaOk'] ?? true,
-        llantaTrseraDerechaOk: _checkboxValues['llantaTrseraDerechaOk'] ?? true,
-        llantaTraseraIzquierdaOk: _checkboxValues['llantaTraseraIzquierdaOk'] ?? true,
-        llantaTraseraVidaOk: _checkboxValues['llantaTraseraVidaOk'] ?? true,
-        llantaRefaccionOk: _checkboxValues['llantaRefaccionOk'] ?? true,
-        presionAdecuadaOk: _checkboxValues['presionAdecuadaOk'] ?? true,
-        parabrisisOk: _checkboxValues['parabrisisOk'] ?? true,
-        cofreOk: _checkboxValues['cofreOk'] ?? true,
-        parrillaOk: _checkboxValues['parrillaOk'] ?? true,
-        defensasOk: _checkboxValues['defensasOk'] ?? true,
-        moldurasOk: _checkboxValues['moldurasOk'] ?? true,
-        placaOk: _checkboxValues['placaOk'] ?? true,
-        salpicaderaOk: _checkboxValues['salpicaderaOk'] ?? true,
-        antenaOk: _checkboxValues['antenaOk'] ?? true,
-        intermitentesOk: _checkboxValues['intermitentesOk'] ?? true,
-        direccionalDerechaOk: _checkboxValues['direccionalDerechaOk'] ?? true,
-        direccionalIzquierdaOk: _checkboxValues['direccionalIzquierdaOk'] ?? true,
-        luzStopOk: _checkboxValues['luzStopOk'] ?? true,
-        farosOk: _checkboxValues['farosOk'] ?? true,
-        lucesAltasOk: _checkboxValues['lucesAltasOk'] ?? true,
-        luzInteriorOk: _checkboxValues['luzInteriorOk'] ?? true,
-        calaveras: _checkboxValues['calaveras'] ?? true,
-        mataChispassOk: _checkboxValues['mataChispassOk'] ?? true,
-        alarmaOk: _checkboxValues['alarmaOk'] ?? true,
-        extintorOk: _checkboxValues['extintorOk'] ?? true,
-        botiquinOk: _checkboxValues['botiquinOk'] ?? true,
-        tarjetaCirculacionOk: _checkboxValues['tarjetaCirculacionOk'] ?? true,
-        licenciaConducirVigenteOk: _checkboxValues['licenciaConducirVigenteOk'] ?? true,
-        polizaSeguroOk: _checkboxValues['polizaSeguroOk'] ?? true,
-        trianguloEmergenciaOk: _checkboxValues['trianguloEmergenciaOk'] ?? true,
-        tableroIndicadoresOk: _checkboxValues['tableroIndicadoresOk'] ?? true,
-        switchEncendidoOk: _checkboxValues['switchEncendidoOk'] ?? true,
-        controlesAcOk: _checkboxValues['controlesAcOk'] ?? true,
-        defrosterOk: _checkboxValues['defrosterOk'] ?? true,
-        radioOk: _checkboxValues['radioOk'] ?? true,
-        volanteOk: _checkboxValues['volanteOk'] ?? true,
-        bolsasAireOk: _checkboxValues['bolsasAireOk'] ?? true,
-        cinturonSeguridadOk: _checkboxValues['cinturonSeguridadOk'] ?? true,
-        coderasOk: _checkboxValues['coderasOk'] ?? true,
-        espejoInteriorOk: _checkboxValues['espejoInteriorOk'] ?? true,
-        frenoManoOk: _checkboxValues['frenoManoOk'] ?? true,
-        encendedorOk: _checkboxValues['encendedorOk'] ?? true,
-        guanteraOk: _checkboxValues['guanteraOk'] ?? true,
-        manijasInterioresOk: _checkboxValues['manijasInterioresOk'] ?? true,
-        segurosOk: _checkboxValues['segurosOk'] ?? true,
-        asientosOk: _checkboxValues['asientosOk'] ?? true,
-        tapetesOk: _checkboxValues['tapetesOk'] ?? true,
-        nivelAceiteMotorOk: _checkboxValues['nivelAceiteMotorOk'] ?? true,
-        nivelAnticongelanteOk: _checkboxValues['nivelAnticongelanteOk'] ?? true,
-        nivelLiquidoFrenosOk: _checkboxValues['nivelLiquidoFrenosOk'] ?? true,
-        bateriaOk: _checkboxValues['bateriaOk'] ?? true,
-        bayonetaAceiteOk: _checkboxValues['bayonetaAceiteOk'] ?? true,
-        taponesOk: _checkboxValues['taponesOk'] ?? true,
-        bocinaClaxxonOk: _checkboxValues['bocinaClaxxonOk'] ?? true,
-        radiadorOk: _checkboxValues['radiadorOk'] ?? true,
-        gatoOk: _checkboxValues['gatoOk'] ?? true,
-        llaveLlantasOk: _checkboxValues['llaveLlantasOk'] ?? true,
-        cablesPasaCorrienteOk: _checkboxValues['cablesPasaCorrienteOk'] ?? true,
-        cajaHerramientasOk: _checkboxValues['cajaHerramientasOk'] ?? true,
-        dadoBirloSeguidadOk: _checkboxValues['dadoBirloSeguidadOk'] ?? true,
-        calcomaniastPermisosOk: _checkboxValues['calcomaniastPermisosOk'] ?? true,
-        calcomaniaVelocidadMaximaOk: _checkboxValues['calcomaniaVelocidadMaximaOk'] ?? true,
-        condicionCarroceriaImagen: _condicionCarroceriaImagen,
-      );
+      // Agregar fecha y hora al momento de enviar
+      _checklistData['fecha'] = DateTime.now().toString().split(' ')[0];
+      
+      // Convertir kilometraje a double si existe
+      if (_checklistData['kilometraje_final'] != null) {
+        final km = _checklistData['kilometraje_final'];
+        if (km is String) {
+          _checklistData['kilometraje_final'] = double.tryParse(km);
+        }
+      }
 
-      // Enviar a la API usando submitCheckin
-      final response = await _apiService.submitCheckin(
-        ticketId: widget.ticket.id,
-        checklistData: checklistCompleto.toJson(),
+      // Enviar a la API
+      final response = await _checkinService.submitCheckin(
+        ticketId: _ticket.id,
+        checklistData: _checklistData,
       );
 
       if (!mounted) return;
@@ -442,22 +175,37 @@ class _CheckinScreenState extends State<CheckinScreen> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Check-in enviado correctamente'),
+          SnackBar(
+            content: Text(response.message),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Regresar con resultado
+        Navigator.pop(context, true);
       } else {
-        throw Exception(response.message ?? 'Error al enviar check-in');
+        String errorMsg = response.message;
+        if (response.errors != null) {
+          final errors = response.errors!.values.join('\n');
+          errorMsg = '$errorMsg\n\n$errors';
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${e.toString()}'),
+          content: Text('Error de conexión: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
     } finally {
@@ -516,32 +264,23 @@ class _CheckinScreenState extends State<CheckinScreen> {
         child: Column(
           children: [
             // Banner informativo
-            if (_existingCheckout != null)
+            if (_ticket.checkoutChecklist != null)
               Container(
-                margin: const EdgeInsets.all(16),
+                color: Colors.blue.shade50,
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.green.shade700),
+                    Icon(Icons.info, color: Colors.blue.shade700),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Los datos se han precargado desde el checkout. Verifica y ajusta según sea necesario.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.green.shade700,
-                        ),
+                        'Datos precargados desde el check-out',
+                        style: TextStyle(color: Colors.blue.shade700),
                       ),
                     ),
                   ],
                 ),
               ),
-
             // Paso 1: Información del Ticket
             if (_currentStep == 1)
               FormSectionWidget(
@@ -552,80 +291,28 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 children: [
                   FormInputWidget(
                     label: 'Folio',
-                    value: _checklist.folio.toString(),
+                    value: _ticket.folio.toString(),
                     onChanged: (_) {},
                   ),
                   FormInputWidget(
                     label: 'Destino',
-                    value: _checklist.destino,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: v,
-                        modelo: _checklist.modelo,
-                        placas: _checklist.placas,
-                        marca: _checklist.marca,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                      );
-                    }),
+                    value: _ticket.destination ?? '',
+                    onChanged: (v) => setState(() => _ticket = _ticket),
                   ),
                   FormInputWidget(
                     label: 'Modelo',
-                    value: _checklist.modelo,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: v,
-                        placas: _checklist.placas,
-                        marca: _checklist.marca,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                      );
-                    }),
+                    value: _ticket.vehicle?.model ?? '',
+                    onChanged: (v) => setState(() => _ticket = _ticket),
                   ),
                   FormInputWidget(
                     label: 'Placas',
-                    value: _checklist.placas,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: _checklist.modelo,
-                        placas: v,
-                        marca: _checklist.marca,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                      );
-                    }),
+                    value: _ticket.vehicle?.plates ?? '',
+                    onChanged: (v) => setState(() => _ticket = _ticket),
                   ),
                   FormInputWidget(
                     label: 'Marca',
-                    value: _checklist.marca,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: _checklist.modelo,
-                        placas: _checklist.placas,
-                        marca: v,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                      );
-                    }),
+                    value: _ticket.vehicle?.brand ?? '',
+                    onChanged: (v) => setState(() => _ticket = _ticket),
                   ),
                 ],
               ),
@@ -641,71 +328,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   FormInputWidget(
                     label: 'Hora Entrada',
                     hint: 'HH:MM',
-                    value: _checklist.horaEntrada,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: _checklist.modelo,
-                        placas: _checklist.placas,
-                        marca: _checklist.marca,
-                        horaSalida: _checklist.horaSalida,
-                        horaEntrada: v,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        kilometrajeFinal: _checklist.kilometrajeFinal,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                        nivelCombustibleFinal: _checklist.nivelCombustibleFinal,
-                      );
-                    }),
+                    value: _checklistData['hora_entrada']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['hora_entrada'] = v),
                   ),
                   FormInputWidget(
                     label: 'Kilometraje Final',
                     hint: 'Kilometraje al regreso',
-                    value: _checklist.kilometrajeFinal?.toString() ?? '',
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: _checklist.modelo,
-                        placas: _checklist.placas,
-                        marca: _checklist.marca,
-                        horaSalida: _checklist.horaSalida,
-                        horaEntrada: _checklist.horaEntrada,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        kilometrajeFinal: double.tryParse(v),
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                        nivelCombustibleFinal: _checklist.nivelCombustibleFinal,
-                      );
-                    }),
+                    value: _checklistData['kilometraje_final']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['kilometraje_final'] = v),
                   ),
                   FormInputWidget(
                     label: 'Combustible Final',
                     hint: '1/2, 3/4, etc',
-                    value: _checklist.nivelCombustibleFinal,
-                    onChanged: (v) => setState(() {
-                      _checklist = ChecklistModel(
-                        ticketId: _checklist.ticketId,
-                        tipoInspeccion: _checklist.tipoInspeccion,
-                        folio: _checklist.folio,
-                        fecha: _checklist.fecha,
-                        destino: _checklist.destino,
-                        modelo: _checklist.modelo,
-                        placas: _checklist.placas,
-                        marca: _checklist.marca,
-                        horaSalida: _checklist.horaSalida,
-                        horaEntrada: _checklist.horaEntrada,
-                        kilometrajeInicial: _checklist.kilometrajeInicial,
-                        kilometrajeFinal: _checklist.kilometrajeFinal,
-                        nivelCombustibleInicial: _checklist.nivelCombustibleInicial,
-                        nivelCombustibleFinal: v,
-                      );
-                    }),
+                    value: _checklistData['nivel_combustible_final']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['nivel_combustible_final'] = v),
                   ),
                 ],
               ),
@@ -728,43 +364,43 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     children: [
                       ChecklistCheckboxWidget(
                         label: 'Delantera Derecha',
-                        value: _checkboxValues['llantaDelanteraDerechaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraDerechaOk'] = v),
+                        value: _checklistData['llanta_delantera_derecha'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_delantera_derecha'] = !(_checklistData['llanta_delantera_derecha'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Delantera Izquierda',
-                        value: _checkboxValues['llantaDelanteraIzquierdaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraIzquierdaOk'] = v),
+                        value: _checklistData['llanta_delantera_izquierda'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_delantera_izquierda'] = !(_checklistData['llanta_delantera_izquierda'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Delantera Vida',
-                        value: _checkboxValues['llantaDelanteraVidaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaDelanteraVidaOk'] = v),
+                        value: _checklistData['llanta_delantera_vida'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_delantera_vida'] = !(_checklistData['llanta_delantera_vida'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Trasera Derecha',
-                        value: _checkboxValues['llantaTrseraDerechaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaTrseraDerechaOk'] = v),
+                        value: _checklistData['llanta_trasera_derecha'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_trasera_derecha'] = !(_checklistData['llanta_trasera_derecha'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Trasera Izquierda',
-                        value: _checkboxValues['llantaTraseraIzquierdaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaTraseraIzquierdaOk'] = v),
+                        value: _checklistData['llanta_trasera_izquierda'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_trasera_izquierda'] = !(_checklistData['llanta_trasera_izquierda'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Trasera Vida',
-                        value: _checkboxValues['llantaTraseraVidaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaTraseraVidaOk'] = v),
+                        value: _checklistData['llanta_trasera_vida'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_trasera_vida'] = !(_checklistData['llanta_trasera_vida'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Refacción',
-                        value: _checkboxValues['llantaRefaccionOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['llantaRefaccionOk'] = v),
+                        value: _checklistData['llanta_refaccion'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['llanta_refaccion'] = !(_checklistData['llanta_refaccion'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Presión Adecuada',
-                        value: _checkboxValues['presionAdecuadaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['presionAdecuadaOk'] = v),
+                        value: _checklistData['presion_adecuada'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['presion_adecuada'] = !(_checklistData['presion_adecuada'] ?? true)),
                       ),
                     ],
                   ),
@@ -789,43 +425,43 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     children: [
                       ChecklistCheckboxWidget(
                         label: 'Parabrisas',
-                        value: _checkboxValues['parabrisisOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['parabrisisOk'] = v),
+                        value: _checklistData['parabrisas'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['parabrisas'] = !(_checklistData['parabrisas'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Cofre',
-                        value: _checkboxValues['cofreOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['cofreOk'] = v),
+                        value: _checklistData['cofre'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['cofre'] = !(_checklistData['cofre'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Parrilla',
-                        value: _checkboxValues['parrillaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['parrillaOk'] = v),
+                        value: _checklistData['parrilla'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['parrilla'] = !(_checklistData['parrilla'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Defensas',
-                        value: _checkboxValues['defensasOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['defensasOk'] = v),
+                        value: _checklistData['defensas'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['defensas'] = !(_checklistData['defensas'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Molduras',
-                        value: _checkboxValues['moldurasOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['moldurasOk'] = v),
+                        value: _checklistData['molduras'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['molduras'] = !(_checklistData['molduras'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Placa',
-                        value: _checkboxValues['placaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['placaOk'] = v),
+                        value: _checklistData['placa'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['placa'] = !(_checklistData['placa'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Salpicadera',
-                        value: _checkboxValues['salpicaderaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['salpicaderaOk'] = v),
+                        value: _checklistData['salpicadera'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['salpicadera'] = !(_checklistData['salpicadera'] ?? true)),
                       ),
                       ChecklistCheckboxWidget(
                         label: 'Antena',
-                        value: _checkboxValues['antenaOk'] ?? false,
-                        onChanged: (v) => setState(() => _checkboxValues['antenaOk'] = v),
+                        value: _checklistData['antena'] ?? true,
+                        onChanged: (_) => setState(() => _checklistData['antena'] = !(_checklistData['antena'] ?? true)),
                       ),
                     ],
                   ),
@@ -848,14 +484,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Intermitentes', value: _checkboxValues['intermitentesOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['intermitentesOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Direc. Der', value: _checkboxValues['direccionalDerechaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['direccionalDerechaOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Direc. Izq', value: _checkboxValues['direccionalIzquierdaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['direccionalIzquierdaOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Luz Stop', value: _checkboxValues['luzStopOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['luzStopOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Faros', value: _checkboxValues['farosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['farosOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Luces Altas', value: _checkboxValues['lucesAltasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['lucesAltasOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Luz Interior', value: _checkboxValues['luzInteriorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['luzInteriorOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Calaveras', value: _checkboxValues['calaveras'] ?? false, onChanged: (v) => setState(() => _checkboxValues['calaveras'] = v)),
+                      ChecklistCheckboxWidget(label: 'Intermitentes', value: _checklistData['intermitentes'] ?? true, onChanged: (_) => setState(() => _checklistData['intermitentes'] = !(_checklistData['intermitentes'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Direc. Der', value: _checklistData['direccional_derecha'] ?? true, onChanged: (_) => setState(() => _checklistData['direccional_derecha'] = !(_checklistData['direccional_derecha'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Direc. Izq', value: _checklistData['direccional_izquierda'] ?? true, onChanged: (_) => setState(() => _checklistData['direccional_izquierda'] = !(_checklistData['direccional_izquierda'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Luz Stop', value: _checklistData['luz_stop'] ?? true, onChanged: (_) => setState(() => _checklistData['luz_stop'] = !(_checklistData['luz_stop'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Faros', value: _checklistData['faros'] ?? true, onChanged: (_) => setState(() => _checklistData['faros'] = !(_checklistData['faros'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Luces Altas', value: _checklistData['luces_altas'] ?? true, onChanged: (_) => setState(() => _checklistData['luces_altas'] = !(_checklistData['luces_altas'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Luz Interior', value: _checklistData['luz_interior'] ?? true, onChanged: (_) => setState(() => _checklistData['luz_interior'] = !(_checklistData['luz_interior'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Calaveras', value: _checklistData['calaveras_buen_estado'] ?? true, onChanged: (_) => setState(() => _checklistData['calaveras_buen_estado'] = !(_checklistData['calaveras_buen_estado'] ?? true))),
                     ],
                   ),
                 ],
@@ -877,14 +513,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Mata Chispas', value: _checkboxValues['mataChispassOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['mataChispassOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Alarma', value: _checkboxValues['alarmaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['alarmaOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Extintor', value: _checkboxValues['extintorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['extintorOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Botiquín', value: _checkboxValues['botiquinOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['botiquinOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Tarjeta Circ', value: _checkboxValues['tarjetaCirculacionOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['tarjetaCirculacionOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Licencia', value: _checkboxValues['licenciaConducirVigenteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['licenciaConducirVigenteOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Póliza Seg', value: _checkboxValues['polizaSeguroOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['polizaSeguroOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Triángulo', value: _checkboxValues['trianguloEmergenciaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['trianguloEmergenciaOk'] = v)),
+                      ChecklistCheckboxWidget(label: 'Mata Chispas', value: _checklistData['mata_chispas'] ?? true, onChanged: (_) => setState(() => _checklistData['mata_chispas'] = !(_checklistData['mata_chispas'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Alarma', value: _checklistData['alarma'] ?? true, onChanged: (_) => setState(() => _checklistData['alarma'] = !(_checklistData['alarma'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Extintor', value: _checklistData['extintor'] ?? true, onChanged: (_) => setState(() => _checklistData['extintor'] = !(_checklistData['extintor'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Botiquín', value: _checklistData['botiquin'] ?? true, onChanged: (_) => setState(() => _checklistData['botiquin'] = !(_checklistData['botiquin'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Tarjeta Circ', value: _checklistData['tarjeta_circulacion'] ?? true, onChanged: (_) => setState(() => _checklistData['tarjeta_circulacion'] = !(_checklistData['tarjeta_circulacion'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Licencia', value: _checklistData['licencia_conducir_vigente'] ?? true, onChanged: (_) => setState(() => _checklistData['licencia_conducir_vigente'] = !(_checklistData['licencia_conducir_vigente'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Póliza Seg', value: _checklistData['poliza_seguro'] ?? true, onChanged: (_) => setState(() => _checklistData['poliza_seguro'] = !(_checklistData['poliza_seguro'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Triángulo', value: _checklistData['triangulo_emergencia'] ?? true, onChanged: (_) => setState(() => _checklistData['triangulo_emergencia'] = !(_checklistData['triangulo_emergencia'] ?? true))),
                     ],
                   ),
                 ],
@@ -906,23 +542,23 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Tablero', value: _checkboxValues['tableroIndicadoresOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['tableroIndicadoresOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Switch', value: _checkboxValues['switchEncendidoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['switchEncendidoOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'A/C', value: _checkboxValues['controlesAcOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['controlesAcOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Defroster', value: _checkboxValues['defrosterOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['defrosterOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Radio', value: _checkboxValues['radioOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['radioOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Volante', value: _checkboxValues['volanteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['volanteOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Bolsas Aire', value: _checkboxValues['bolsasAireOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bolsasAireOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Cinturón', value: _checkboxValues['cinturonSeguridadOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cinturonSeguridadOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Coderas', value: _checkboxValues['coderasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['coderasOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Espejo', value: _checkboxValues['espejoInteriorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['espejoInteriorOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Freno Mano', value: _checkboxValues['frenoManoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['frenoManoOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Encendedor', value: _checkboxValues['encendedorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['encendedorOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Guantera', value: _checkboxValues['guanteraOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['guanteraOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Manijas', value: _checkboxValues['manijasInterioresOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['manijasInterioresOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Seguros', value: _checkboxValues['segurosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['segurosOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Asientos', value: _checkboxValues['asientosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['asientosOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Tapetes', value: _checkboxValues['tapetesOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['tapetesOk'] = v)),
+                      ChecklistCheckboxWidget(label: 'Tablero', value: _checklistData['tablero_indicadores'] ?? true, onChanged: (_) => setState(() => _checklistData['tablero_indicadores'] = !(_checklistData['tablero_indicadores'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Switch', value: _checklistData['switch_encendido'] ?? true, onChanged: (_) => setState(() => _checklistData['switch_encendido'] = !(_checklistData['switch_encendido'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'A/C', value: _checklistData['controles_ac'] ?? true, onChanged: (_) => setState(() => _checklistData['controles_ac'] = !(_checklistData['controles_ac'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Defroster', value: _checklistData['defroster'] ?? true, onChanged: (_) => setState(() => _checklistData['defroster'] = !(_checklistData['defroster'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Radio', value: _checklistData['radio'] ?? true, onChanged: (_) => setState(() => _checklistData['radio'] = !(_checklistData['radio'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Volante', value: _checklistData['volante'] ?? true, onChanged: (_) => setState(() => _checklistData['volante'] = !(_checklistData['volante'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Bolsas Aire', value: _checklistData['bolsas_aire'] ?? true, onChanged: (_) => setState(() => _checklistData['bolsas_aire'] = !(_checklistData['bolsas_aire'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Cinturón', value: _checklistData['cintulon_seguridad'] ?? true, onChanged: (_) => setState(() => _checklistData['cintulon_seguridad'] = !(_checklistData['cintulon_seguridad'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Coderas', value: _checklistData['coderas'] ?? true, onChanged: (_) => setState(() => _checklistData['coderas'] = !(_checklistData['coderas'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Espejo', value: _checklistData['espejo_interior'] ?? true, onChanged: (_) => setState(() => _checklistData['espejo_interior'] = !(_checklistData['espejo_interior'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Freno Mano', value: _checklistData['freno_mano'] ?? true, onChanged: (_) => setState(() => _checklistData['freno_mano'] = !(_checklistData['freno_mano'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Encendedor', value: _checklistData['encendedor'] ?? true, onChanged: (_) => setState(() => _checklistData['encendedor'] = !(_checklistData['encendedor'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Guantera', value: _checklistData['guantera'] ?? true, onChanged: (_) => setState(() => _checklistData['guantera'] = !(_checklistData['guantera'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Manijas', value: _checklistData['manijas_interiores'] ?? true, onChanged: (_) => setState(() => _checklistData['manijas_interiores'] = !(_checklistData['manijas_interiores'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Seguros', value: _checklistData['seguros'] ?? true, onChanged: (_) => setState(() => _checklistData['seguros'] = !(_checklistData['seguros'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Asientos', value: _checklistData['asientos'] ?? true, onChanged: (_) => setState(() => _checklistData['asientos'] = !(_checklistData['asientos'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Tapetes', value: _checklistData['tapetes_delanteros_traseros'] ?? true, onChanged: (_) => setState(() => _checklistData['tapetes_delanteros_traseros'] = !(_checklistData['tapetes_delanteros_traseros'] ?? true))),
                     ],
                   ),
                 ],
@@ -944,14 +580,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Aceite Motor', value: _checkboxValues['nivelAceiteMotorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelAceiteMotorOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Anticongelante', value: _checkboxValues['nivelAnticongelanteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelAnticongelanteOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Líquido Frenos', value: _checkboxValues['nivelLiquidoFrenosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['nivelLiquidoFrenosOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Batería', value: _checkboxValues['bateriaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bateriaOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Bayoneta', value: _checkboxValues['bayonetaAceiteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bayonetaAceiteOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Tapones', value: _checkboxValues['taponesOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['taponesOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Claxon', value: _checkboxValues['bocinaClaxxonOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['bocinaClaxxonOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Radiador', value: _checkboxValues['radiadorOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['radiadorOk'] = v)),
+                      ChecklistCheckboxWidget(label: 'Aceite Motor', value: _checklistData['nivel_aceite_motor'] ?? true, onChanged: (_) => setState(() => _checklistData['nivel_aceite_motor'] = !(_checklistData['nivel_aceite_motor'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Anticongelante', value: _checklistData['nivel_anticongelante'] ?? true, onChanged: (_) => setState(() => _checklistData['nivel_anticongelante'] = !(_checklistData['nivel_anticongelante'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Líquido Frenos', value: _checklistData['nivel_liquido_frenos'] ?? true, onChanged: (_) => setState(() => _checklistData['nivel_liquido_frenos'] = !(_checklistData['nivel_liquido_frenos'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Batería', value: _checklistData['bateria'] ?? true, onChanged: (_) => setState(() => _checklistData['bateria'] = !(_checklistData['bateria'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Bayoneta', value: _checklistData['bayoneta_aceite_motor'] ?? true, onChanged: (_) => setState(() => _checklistData['bayoneta_aceite_motor'] = !(_checklistData['bayoneta_aceite_motor'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Tapones', value: _checklistData['tapones'] ?? true, onChanged: (_) => setState(() => _checklistData['tapones'] = !(_checklistData['tapones'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Claxon', value: _checklistData['bocina_claxon'] ?? true, onChanged: (_) => setState(() => _checklistData['bocina_claxon'] = !(_checklistData['bocina_claxon'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Radiador', value: _checklistData['radiador'] ?? true, onChanged: (_) => setState(() => _checklistData['radiador'] = !(_checklistData['radiador'] ?? true))),
                     ],
                   ),
                 ],
@@ -973,11 +609,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Gato', value: _checkboxValues['gatoOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['gatoOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Llave Llantas', value: _checkboxValues['llaveLlantasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['llaveLlantasOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Cables Corriente', value: _checkboxValues['cablesPasaCorrienteOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cablesPasaCorrienteOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Caja Herr', value: _checkboxValues['cajaHerramientasOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['cajaHerramientasOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Birlo Seg', value: _checkboxValues['dadoBirloSeguidadOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['dadoBirloSeguidadOk'] = v)),
+                      ChecklistCheckboxWidget(label: 'Gato', value: _checklistData['gato'] ?? true, onChanged: (_) => setState(() => _checklistData['gato'] = !(_checklistData['gato'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Llave Llantas', value: _checklistData['llave_ruedas'] ?? true, onChanged: (_) => setState(() => _checklistData['llave_ruedas'] = !(_checklistData['llave_ruedas'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Cables Corriente', value: _checklistData['cables_pasa_corriente'] ?? true, onChanged: (_) => setState(() => _checklistData['cables_pasa_corriente'] = !(_checklistData['cables_pasa_corriente'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Caja Herr', value: _checklistData['caja_bolsa_herramientas'] ?? true, onChanged: (_) => setState(() => _checklistData['caja_bolsa_herramientas'] = !(_checklistData['caja_bolsa_herramientas'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Birlo Seg', value: _checklistData['dado_birlo_seguridad'] ?? true, onChanged: (_) => setState(() => _checklistData['dado_birlo_seguridad'] = !(_checklistData['dado_birlo_seguridad'] ?? true))),
                     ],
                   ),
                 ],
@@ -999,8 +635,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      ChecklistCheckboxWidget(label: 'Permisos', value: _checkboxValues['calcomaniastPermisosOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['calcomaniastPermisosOk'] = v)),
-                      ChecklistCheckboxWidget(label: 'Veloc Máx', value: _checkboxValues['calcomaniaVelocidadMaximaOk'] ?? false, onChanged: (v) => setState(() => _checkboxValues['calcomaniaVelocidadMaximaOk'] = v)),
+                      ChecklistCheckboxWidget(label: 'Permisos', value: _checklistData['calcomanias_permisos'] ?? true, onChanged: (_) => setState(() => _checklistData['calcomanias_permisos'] = !(_checklistData['calcomanias_permisos'] ?? true))),
+                      ChecklistCheckboxWidget(label: 'Veloc Máx', value: _checklistData['calcomania_velocidad_maxima'] ?? true, onChanged: (_) => setState(() => _checklistData['calcomania_velocidad_maxima'] = !(_checklistData['calcomania_velocidad_maxima'] ?? true))),
                     ],
                   ),
                 ],
@@ -1017,7 +653,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   VehicleDamageCanvasWidget(
                     onImageSaved: (base64Image) {
                       setState(() {
-                        _condicionCarroceriaImagen = base64Image;
+                        _checklistData['condicion_carroceria_imagen'] = base64Image;
                       });
                     },
                   ),
@@ -1030,14 +666,33 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 step: 12,
                 totalSteps: _totalSteps,
                 title: 'Observaciones',
-                description: 'Registra observaciones generales',
+                description: 'Registra mantenimiento y responsables',
                 children: [
                   FormInputWidget(
-                    label: 'Observaciones Generales',
-                    hint: 'Notas adicionales sobre el vehículo...',
-                    value: '',
-                    onChanged: (_) {},
-                    maxLines: 5,
+                    label: 'Mantenimiento Preventivo',
+                    hint: 'Describe tareas preventivas...',
+                    value: _checklistData['mantenimiento_preventivo']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['mantenimiento_preventivo'] = v),
+                    maxLines: 3,
+                  ),
+                  FormInputWidget(
+                    label: 'Mantenimiento Correctivo',
+                    hint: 'Describe reparaciones realizadas...',
+                    value: _checklistData['mantenimiento_correctivo']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['mantenimiento_correctivo'] = v),
+                    maxLines: 3,
+                  ),
+                  FormInputWidget(
+                    label: 'Responsable Recibo',
+                    hint: 'Nombre de quién recibe',
+                    value: _checklistData['responsable_recibo_uso']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['responsable_recibo_uso'] = v),
+                  ),
+                  FormInputWidget(
+                    label: 'Responsable Entrega',
+                    hint: 'Nombre de quién entrega',
+                    value: _checklistData['responsable_entrega']?.toString() ?? '',
+                    onChanged: (v) => setState(() => _checklistData['responsable_entrega'] = v),
                   ),
                 ],
               ),

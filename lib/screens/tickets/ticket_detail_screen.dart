@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'checkout_screen_new.dart';
+import 'checkout_screen.dart';
 import 'checkin_screen.dart';
 import '../../models/ticket_model.dart';
 
