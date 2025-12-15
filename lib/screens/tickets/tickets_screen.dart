@@ -80,34 +80,58 @@ class _TicketsScreenState extends State<TicketsScreen> {
     }
   }
 
-  String _getStatusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'aprobado':
-        return 'Aprobado';
-      case 'en_curso':
-        return 'En curso';
-      case 'finalizado':
-        return 'Finalizado';
-      case 'pendiente':
-        return 'Pendiente';
-      default:
-        return status;
+  Map<String, dynamic> _getCurrentStatus(TicketModel ticket) {
+    if (ticket.hasCheckout && ticket.hasCheckin) {
+      return {
+        'label': 'Completado',
+        'icon': Icons.check_circle,
+        'color': Colors.green,
+      };
+    } else if (ticket.hasCheckout) {
+      return {
+        'label': 'Check Out',
+        'icon': Icons.exit_to_app,
+        'color': Colors.orange,
+      };
+    } else {
+      return {
+        'label': 'Aprobado',
+        'icon': Icons.check_circle_outline,
+        'color': Colors.blue,
+      };
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'aprobado':
-        return Colors.blue;
-      case 'en_curso':
-        return Colors.orange;
-      case 'finalizado':
-        return Colors.green;
-      case 'pendiente':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
+  Widget _buildStatusChip(TicketModel ticket) {
+    final status = _getCurrentStatus(ticket);
+    final color = status['color'] as Color;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            status['icon'] as IconData,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status['label'] as String,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -160,7 +184,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     itemCount: _tickets.length,
                     itemBuilder: (context, index) {
                       final ticket = _tickets[index];
-                      final statusColor = _getStatusColor(ticket.status);
                       
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -195,24 +218,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        _getStatusLabel(ticket.status),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: statusColor,
-                                        ),
-                                      ),
-                                    ),
+                                    _buildStatusChip(ticket),
                                   ],
                                 ),
                                 const SizedBox(height: 8),

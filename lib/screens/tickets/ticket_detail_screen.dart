@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'checkout_screen_new.dart';
+import 'checkin_screen.dart';
 import '../../models/ticket_model.dart';
 
 class TicketDetailScreen extends StatelessWidget {
@@ -73,16 +74,13 @@ class TicketDetailScreen extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        Chip(
-                          label: Text(status),
-                          labelStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          backgroundColor: _statusColor(context),
-                        ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    // Barra de progreso de steps
+                    _buildProgressSteps(scheme),
+                    const SizedBox(height: 16),
+                    const Divider(),
                     const SizedBox(height: 12),
                     _infoRow(Icons.location_on, 'Destino', destination),
                     _infoRow(Icons.calendar_today, 'Fecha', date),
@@ -113,25 +111,104 @@ class TicketDetailScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CheckoutScreenNew(ticket: ticket),
+                    if (!ticket.hasCheckout)
+                      // No tiene checkout: botón para realizar checkout
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CheckoutScreenNew(ticket: ticket),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.exit_to_app),
+                        label: const Text('Realizar Check Out'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                    if (ticket.hasCheckout && !ticket.hasCheckin)
+                      // Tiene checkout pero no checkin: botón principal para checkin
+                      Column(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckinScreen(ticket: ticket),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.login),
+                            label: const Text('Realizar Check In'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: scheme.primary,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(48),
+                            ),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.checklist_rtl),
-                      label: Text(
-                        ticket.hasCheckout ? 'Ver checkout' : 'Realizar checkout'
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckoutScreenNew(ticket: ticket),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.visibility),
+                            label: const Text('Ver Check Out'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: scheme.primary,
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                          ),
+                        ],
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(48),
+                    if (ticket.hasCheckout && ticket.hasCheckin)
+                      // Tiene ambos: botones para ver ambos
+                      Column(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckoutScreenNew(ticket: ticket),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.exit_to_app),
+                            label: const Text('Ver Check Out'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: scheme.primary,
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckinScreen(ticket: ticket),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.login),
+                            label: const Text('Ver Check In'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: scheme.primary,
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -139,6 +216,91 @@ class TicketDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  int _getCurrentStep() {
+    // 0 = Aprobado (llegó aquí)
+    // 1 = Check out realizado
+    // 2 = Check in realizado
+    // 3 = Completado
+    
+    if (ticket.hasCheckout && ticket.hasCheckin) {
+      return 3; // Tiene ambos, completado
+    } else if (ticket.hasCheckout) {
+      return 1; // Solo tiene checkout
+    } else {
+      return 0; // Aprobado, sin checkout
+    }
+  }
+
+  Widget _buildProgressSteps(ColorScheme scheme) {
+    final currentStep = _getCurrentStep();
+    final steps = [
+      {'label': 'Aprobado', 'icon': Icons.check_circle_outline},
+      {'label': 'Check Out', 'icon': Icons.exit_to_app},
+      {'label': 'Check In', 'icon': Icons.login},
+      {'label': 'Completado', 'icon': Icons.check_circle},
+    ];
+
+    return Row(
+      children: [
+        for (int index = 0; index < steps.length; index++) ...[
+          // Círculo del paso
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index <= currentStep
+                        ? scheme.primary
+                        : Colors.grey.shade300,
+                    border: Border.all(
+                      color: index == currentStep
+                          ? scheme.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    steps[index]['icon'] as IconData,
+                    color: index <= currentStep ? Colors.white : Colors.grey.shade600,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  steps[index]['label'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: index == currentStep ? FontWeight.bold : FontWeight.normal,
+                    color: index <= currentStep
+                        ? scheme.primary
+                        : Colors.grey.shade600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          // Línea conectora (solo entre pasos, no después del último)
+          if (index < steps.length - 1)
+            Expanded(
+              child: Container(
+                height: 2,
+                margin: const EdgeInsets.only(bottom: 30),
+                color: index < currentStep
+                    ? scheme.primary
+                    : Colors.grey.shade300,
+              ),
+            ),
+        ],
+      ],
     );
   }
 
