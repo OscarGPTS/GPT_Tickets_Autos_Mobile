@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/ticket_model.dart';
-import '../../tickets/ticket_detail_screen.dart';
+import '../ticket_detail_screen.dart';
 
 class TicketCardWidget extends StatelessWidget {
   final TicketModel ticket;
-
+  
   const TicketCardWidget({
     super.key,
     required this.ticket,
@@ -127,10 +127,13 @@ class TicketCardWidget extends StatelessWidget {
                   ),
                 ],
               ),
+
               const SizedBox(height: 4),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+
                   Row(
                     children: [
                       Icon(
@@ -154,6 +157,7 @@ class TicketCardWidget extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   if (ticket.purpose != null && ticket.purpose!.isNotEmpty)
                     Expanded(
                       child: Text(
@@ -170,6 +174,7 @@ class TicketCardWidget extends StatelessWidget {
                     ),
                 ],
               ),
+
             ],
           ),
         ),

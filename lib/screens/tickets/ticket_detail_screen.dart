@@ -2,42 +2,19 @@ import 'package:flutter/material.dart';
 import 'checkout_screen.dart';
 import 'checkin_screen.dart';
 import '../../models/ticket_model.dart';
+import 'package:intl/intl.dart';
 
 class TicketDetailScreen extends StatelessWidget {
   final TicketModel ticket;
 
-  // Constructor legacy para mantener compatibilidad
-  const TicketDetailScreen({
-    super.key,
-    required this.ticket,
-    String? folio,
-    String? destination,
-    String? date,
-    String? timeStart,
-    String? timeEnd,
-    String? vehicle,
-    String? status,
-  });
+  const TicketDetailScreen({super.key,required this.ticket});
 
-  String get folio => ticket.folio;
-  String get destination => ticket.destination ?? 'Sin destino';
-  String get date => ticket.requestedDate?.toString().split(' ')[0] ?? '';
-  String get timeStart => ticket.requestedTimeStart ?? '';
-  String? get timeEnd => ticket.requestedTimeEnd;
-  String get vehicle => ticket.vehicleName;
-  String get status => ticket.status;
-
-  Color _statusColor(BuildContext context) {
-    switch (status.toLowerCase()) {
-      case 'pendiente':
-        return Colors.orange;
-      case 'completado':
-      case 'pagado':
-        return Colors.green;
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
-  }
+  static const steps = [
+    {'label': 'Aprobado', 'icon': Icons.check_circle_outline},
+    {'label': 'Check Out', 'icon': Icons.exit_to_app},
+    {'label': 'Check In', 'icon': Icons.login},
+    {'label': 'Completado', 'icon': Icons.check_circle},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -45,15 +22,15 @@ class TicketDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ticket $folio'),
+        title: Text('Ticket ${ticket.folio}'),
         backgroundColor: scheme.primary,
-        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -68,7 +45,7 @@ class TicketDetailScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Folio $folio',
+                          'Folio ${ticket.folio}',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -77,22 +54,22 @@ class TicketDetailScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Barra de progreso de steps
                     _buildProgressSteps(scheme),
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 12),
-                    _infoRow(Icons.location_on, 'Destino', destination),
-                    _infoRow(Icons.calendar_today, 'Fecha', date),
-                    _infoRow(Icons.schedule, 'Hora salida', timeStart),
-                    if (timeEnd != null && timeEnd!.isNotEmpty)
-                      _infoRow(Icons.schedule_outlined, 'Hora regreso', timeEnd!),
-                    _infoRow(Icons.directions_car, 'Vehículo', vehicle),
+                    _infoRow(Icons.location_on, 'Destino', ticket.destination!.isNotEmpty ? ticket.destination! : 'Sin destino especificado'),
+                    _infoRow(Icons.calendar_today, 'Fecha', ticket.requestedDate != null ? DateFormat('dd-MM-yyyy').format(ticket.requestedDate!) : 'Fecha no disponible'),
+                    _infoRow(Icons.schedule, 'Hora salida', ticket.requestedTimeStart!),
+                    if (ticket.requestedTimeEnd != null && ticket.requestedTimeEnd!.isNotEmpty)
+                      _infoRow(Icons.schedule_outlined, 'Hora regreso', ticket.requestedTimeEnd!),
+                    _infoRow(Icons.directions_car, 'Vehículo', ticket.vehicleName),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
+
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -111,8 +88,8 @@ class TicketDetailScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    
                     if (!ticket.hasCheckout)
-                      // No tiene checkout: botón para realizar checkout
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
@@ -130,8 +107,8 @@ class TicketDetailScreen extends StatelessWidget {
                           minimumSize: const Size.fromHeight(48),
                         ),
                       ),
+
                     if (ticket.hasCheckout && !ticket.hasCheckin)
-                      // Tiene checkout pero no checkin: botón principal para checkin
                       Column(
                         children: [
                           ElevatedButton.icon(
@@ -170,8 +147,8 @@ class TicketDetailScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+
                     if (ticket.hasCheckout && ticket.hasCheckin)
-                      // Tiene ambos: botones para ver ambos
                       Column(
                         children: [
                           OutlinedButton.icon(
@@ -209,10 +186,12 @@ class TicketDetailScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+
                   ],
                 ),
               ),
             ),
+
           ],
         ),
       ),
@@ -220,17 +199,13 @@ class TicketDetailScreen extends StatelessWidget {
   }
 
   int _getCurrentStep() {
-    // 0 = Aprobado (llegó aquí)
-    // 1 = Check out realizado
-    // 2 = Check in realizado
-    // 3 = Completado
     
     if (ticket.hasCheckout && ticket.hasCheckin) {
-      return 3; // Tiene ambos, completado
+      return 3; 
     } else if (ticket.hasCheckout) {
-      return 1; // Solo tiene checkout
+      return 1; 
     } else {
-      return 0; // Aprobado, sin checkout
+      return 0; 
     }
   }
 

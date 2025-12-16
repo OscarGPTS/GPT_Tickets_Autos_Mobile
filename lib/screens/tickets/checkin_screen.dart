@@ -10,8 +10,9 @@ import 'widgets/vehicle_damage_canvas_widget.dart';
 
 class CheckinScreen extends StatefulWidget {
   final TicketModel ticket;
+  final bool hideAppBar;
   
-  const CheckinScreen({super.key, required this.ticket});
+  const CheckinScreen({super.key, required this.ticket, this.hideAppBar = false});
 
   @override
   State<CheckinScreen> createState() => _CheckinScreenState();
@@ -19,8 +20,8 @@ class CheckinScreen extends StatefulWidget {
 
 class _CheckinScreenState extends State<CheckinScreen> {
   final _formKey = GlobalKey<FormState>();
-  int _currentStep = 1;
-  final int _totalSteps = 12;
+  int _currentSection = 1;
+  final int _totalSections = 12;
 
   final CheckinService _checkinService = CheckinService();
   final StorageService _storageService = StorageService();
@@ -128,15 +129,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
     }
   }
 
-  void _nextStep() {
-    if (_currentStep < _totalSteps) {
-      setState(() => _currentStep++);
+  void _nextSection() {
+    if (_currentSection < _totalSections) {
+      setState(() => _currentSection++);
     }
   }
 
-  void _previousStep() {
-    if (_currentStep > 1) {
-      setState(() => _currentStep--);
+  void _previousSection() {
+    if (_currentSection > 1) {
+      setState(() => _currentSection--);
     }
   }
 
@@ -220,7 +221,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: widget.hideAppBar ? null : AppBar(
         title: Text(_hasExistingCheckin ? 'Ver Check-in' : 'Realizar Check-in'),
         backgroundColor: scheme.primary,
       ),
@@ -260,68 +261,59 @@ class _CheckinScreenState extends State<CheckinScreen> {
   Widget _buildCheckinForm(ColorScheme scheme) {
     return Form(
       key: _formKey,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Banner informativo
-            if (_ticket.checkoutChecklist != null)
-              Container(
-                color: Colors.blue.shade50,
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Datos precargados desde el check-out',
-                        style: TextStyle(color: Colors.blue.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            // Paso 1: Información del Ticket
-            if (_currentStep == 1)
-              FormSectionWidget(
-                step: 1,
-                totalSteps: _totalSteps,
-                title: 'Información del Ticket',
-                description: 'Datos generales del vehículo',
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  FormInputWidget(
-                    label: 'Folio',
-                    value: _ticket.folio.toString(),
-                    onChanged: (_) {},
+                  // Sección 1: Información del Ticket
+                  Visibility(
+                    visible: _currentSection == 1,
+                    maintainState: true,
+                    child: FormSectionWidget(
+                      step: 1,
+                      totalSteps: 12,
+                      title: 'Información del Ticket',
+                      description: 'Datos generales del vehículo',
+                      children: [
+                        FormInputWidget(
+                          label: 'Folio',
+                          value: _ticket.folio.toString(),
+                          onChanged: (_) {},
+                        ),
+                        FormInputWidget(
+                          label: 'Destino',
+                          value: _ticket.destination ?? '',
+                          onChanged: (v) => setState(() => _ticket = _ticket),
+                        ),
+                        FormInputWidget(
+                          label: 'Modelo',
+                          value: _ticket.vehicle?.model ?? '',
+                          onChanged: (v) => setState(() => _ticket = _ticket),
+                        ),
+                        FormInputWidget(
+                          label: 'Placas',
+                          value: _ticket.vehicle?.plates ?? '',
+                          onChanged: (v) => setState(() => _ticket = _ticket),
+                        ),
+                        FormInputWidget(
+                          label: 'Marca',
+                          value: _ticket.vehicle?.brand ?? '',
+                          onChanged: (v) => setState(() => _ticket = _ticket),
+                        ),
+                      ],
+                    ),
                   ),
-                  FormInputWidget(
-                    label: 'Destino',
-                    value: _ticket.destination ?? '',
-                    onChanged: (v) => setState(() => _ticket = _ticket),
-                  ),
-                  FormInputWidget(
-                    label: 'Modelo',
-                    value: _ticket.vehicle?.model ?? '',
-                    onChanged: (v) => setState(() => _ticket = _ticket),
-                  ),
-                  FormInputWidget(
-                    label: 'Placas',
-                    value: _ticket.vehicle?.plates ?? '',
-                    onChanged: (v) => setState(() => _ticket = _ticket),
-                  ),
-                  FormInputWidget(
-                    label: 'Marca',
-                    value: _ticket.vehicle?.brand ?? '',
-                    onChanged: (v) => setState(() => _ticket = _ticket),
-                  ),
-                ],
-              ),
 
-            // Paso 2: Tiempos y Kilometraje
-            if (_currentStep == 2)
-              FormSectionWidget(
-                step: 2,
-                totalSteps: _totalSteps,
+                  // Sección 2: Tiempos y Kilometraje
+                  Visibility(
+                    visible: _currentSection == 2,
+                    maintainState: true,
+                    child: FormSectionWidget(
+                      step: 2,
+                      totalSteps: 12,
                 title: 'Tiempos y Kilometraje',
                 description: 'Registra entrada y mediciones',
                 children: [
@@ -339,18 +331,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ),
                   FormInputWidget(
                     label: 'Combustible Final',
-                    hint: '1/2, 3/4, etc',
-                    value: _checklistData['nivel_combustible_final']?.toString() ?? '',
-                    onChanged: (v) => setState(() => _checklistData['nivel_combustible_final'] = v),
+                        hint: '1/2, 3/4, etc',
+                        value: _checklistData['nivel_combustible_final']?.toString() ?? '',
+                        onChanged: (v) => setState(() => _checklistData['nivel_combustible_final'] = v),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
 
-            // Paso 3: Llantas
-            if (_currentStep == 3)
-              FormSectionWidget(
-                step: 3,
-                totalSteps: _totalSteps,
+                // Sección 3: Llantas
+                Visibility(
+                  visible: _currentSection == 3,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 3,
+                    totalSteps: 12,
                 title: 'Llantas',
                 description: 'Verifica el estado de todas las llantas',
                 children: [
@@ -404,14 +399,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 4: Frontal
-            if (_currentStep == 4)
-              FormSectionWidget(
-                step: 4,
-                totalSteps: _totalSteps,
+                // Sección 4: Frontal
+                Visibility(
+                  visible: _currentSection == 4,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 4,
+                    totalSteps: 12,
                 title: 'Parte Frontal',
                 description: 'Verifica parabrisas, cofre, defensas, etc.',
                 children: [
@@ -465,14 +463,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 5: Luces
-            if (_currentStep == 5)
-              FormSectionWidget(
-                step: 5,
-                totalSteps: _totalSteps,
+                // Sección 5: Luces
+                Visibility(
+                  visible: _currentSection == 5,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 5,
+                    totalSteps: 12,
                 title: 'Luces',
                 description: 'Verifica todas las luces del vehículo',
                 children: [
@@ -494,14 +495,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Calaveras', value: _checklistData['calaveras_buen_estado'] ?? true, onChanged: (_) => setState(() => _checklistData['calaveras_buen_estado'] = !(_checklistData['calaveras_buen_estado'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 6: Seguridad
-            if (_currentStep == 6)
-              FormSectionWidget(
-                step: 6,
-                totalSteps: _totalSteps,
+                // Sección 6: Seguridad
+                Visibility(
+                  visible: _currentSection == 6,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 6,
+                    totalSteps: 12,
                 title: 'Seguridad',
                 description: 'Verifica equipos de seguridad',
                 children: [
@@ -523,14 +527,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Triángulo', value: _checklistData['triangulo_emergencia'] ?? true, onChanged: (_) => setState(() => _checklistData['triangulo_emergencia'] = !(_checklistData['triangulo_emergencia'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 7: Interior
-            if (_currentStep == 7)
-              FormSectionWidget(
-                step: 7,
-                totalSteps: _totalSteps,
+                // Sección 7: Interior
+                Visibility(
+                  visible: _currentSection == 7,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 7,
+                    totalSteps: 12,
                 title: 'Interior',
                 description: 'Verifica componentes interiores',
                 children: [
@@ -561,14 +568,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Tapetes', value: _checklistData['tapetes_delanteros_traseros'] ?? true, onChanged: (_) => setState(() => _checklistData['tapetes_delanteros_traseros'] = !(_checklistData['tapetes_delanteros_traseros'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 8: Motor
-            if (_currentStep == 8)
-              FormSectionWidget(
-                step: 8,
-                totalSteps: _totalSteps,
+                // Sección 8: Motor
+                Visibility(
+                  visible: _currentSection == 8,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 8,
+                    totalSteps: 12,
                 title: 'Motor',
                 description: 'Verifica componentes del motor',
                 children: [
@@ -590,14 +600,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Radiador', value: _checklistData['radiador'] ?? true, onChanged: (_) => setState(() => _checklistData['radiador'] = !(_checklistData['radiador'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 9: Herramientas
-            if (_currentStep == 9)
-              FormSectionWidget(
-                step: 9,
-                totalSteps: _totalSteps,
+                // Sección 9: Herramientas
+                Visibility(
+                  visible: _currentSection == 9,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 9,
+                    totalSteps: 12,
                 title: 'Herramientas',
                 description: 'Verifica equipos y herramientas',
                 children: [
@@ -616,14 +629,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Birlo Seg', value: _checklistData['dado_birlo_seguridad'] ?? true, onChanged: (_) => setState(() => _checklistData['dado_birlo_seguridad'] = !(_checklistData['dado_birlo_seguridad'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 10: Calcomanías
-            if (_currentStep == 10)
-              FormSectionWidget(
-                step: 10,
-                totalSteps: _totalSteps,
+                // Sección 10: Calcomanías
+                Visibility(
+                  visible: _currentSection == 10,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 10,
+                    totalSteps: 12,
                 title: 'Calcomanías',
                 description: 'Verifica pegatinas y calcomanías',
                 children: [
@@ -639,14 +655,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ChecklistCheckboxWidget(label: 'Veloc Máx', value: _checklistData['calcomania_velocidad_maxima'] ?? true, onChanged: (_) => setState(() => _checklistData['calcomania_velocidad_maxima'] = !(_checklistData['calcomania_velocidad_maxima'] ?? true))),
                     ],
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 11: Canvas de daños
-            if (_currentStep == 11)
-              FormSectionWidget(
-                step: 11,
-                totalSteps: _totalSteps,
+                // Sección 11: Condición de Carrocería
+                Visibility(
+                  visible: _currentSection == 11,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 11,
+                    totalSteps: 12,
                 title: 'Condición de Carrocería',
                 description: 'Dibuja los daños detectados en el vehículo',
                 children: [
@@ -657,14 +676,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       });
                     },
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
 
-            // Paso 12: Observaciones
-            if (_currentStep == 12)
-              FormSectionWidget(
-                step: 12,
-                totalSteps: _totalSteps,
+                // Sección 12: Observaciones
+                Visibility(
+                  visible: _currentSection == 12,
+                  maintainState: true,
+                  child: FormSectionWidget(
+                    step: 12,
+                    totalSteps: 12,
                 title: 'Observaciones',
                 description: 'Registra mantenimiento y responsables',
                 children: [
@@ -694,34 +716,49 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     value: _checklistData['responsable_entrega']?.toString() ?? '',
                     onChanged: (v) => setState(() => _checklistData['responsable_entrega'] = v),
                   ),
+                    ],
+                  ),
+                ),
                 ],
               ),
+            ),
+          ),
 
-            // Botones de navegación
-            Padding(
-              padding: const EdgeInsets.all(24),
+          // Botones de navegación
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
               child: Row(
                 children: [
-                  if (_currentStep > 1)
+                  if (_currentSection > 1)
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: _previousStep,
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: const Text('Atrás'),
+                      child: OutlinedButton.icon(
+                        onPressed: _previousSection,
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        label: const Text('Atrás'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ),
-                  if (_currentStep > 1) const SizedBox(width: 12),
+                  if (_currentSection > 1) const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    flex: _currentSection == 1 ? 1 : 1,
+                    child: ElevatedButton.icon(
                       onPressed: _isSubmitting
                           ? null
-                          : (_currentStep == _totalSteps ? _submit : _nextStep),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: _isSubmitting
+                          : (_currentSection == _totalSections ? _submit : _nextSection),
+                      icon: _isSubmitting
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -730,14 +767,28 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Text(_currentStep == _totalSteps ? 'Enviar Check-in' : 'Siguiente'),
+                          : Icon(
+                              _currentSection == _totalSections ? Icons.send : Icons.arrow_forward,
+                              size: 20,
+                            ),
+                      label: Text(
+                        _isSubmitting
+                            ? 'Enviando...'
+                            : (_currentSection == _totalSections ? 'Enviar' : 'Siguiente'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: scheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

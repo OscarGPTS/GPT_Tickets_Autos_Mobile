@@ -10,8 +10,9 @@ import 'widgets/vehicle_damage_canvas_widget.dart';
 
 class CheckoutScreenNew extends StatefulWidget {
   final TicketModel ticket;
+  final bool hideAppBar;
   
-  const CheckoutScreenNew({super.key, required this.ticket});
+  const CheckoutScreenNew({super.key, required this.ticket, this.hideAppBar = false});
 
   @override
   State<CheckoutScreenNew> createState() => _CheckoutScreenNewState();
@@ -19,8 +20,8 @@ class CheckoutScreenNew extends StatefulWidget {
 
 class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
   final _formKey = GlobalKey<FormState>();
-  int _currentStep = 1;
-  final int _totalSteps = 12;
+  int _currentSection = 1;
+  final int _totalSections = 12;
 
   final CheckoutService _checkoutService = CheckoutService();
   final StorageService _storageService = StorageService();
@@ -134,15 +135,15 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
 
 
 
-  void _nextStep() {
-    if (_currentStep < _totalSteps) {
-      setState(() => _currentStep++);
+  void _nextSection() {
+    if (_currentSection < _totalSections) {
+      setState(() => _currentSection++);
     }
   }
 
-  void _previousStep() {
-    if (_currentStep > 1) {
-      setState(() => _currentStep--);
+  void _previousSection() {
+    if (_currentSection > 1) {
+      setState(() => _currentSection--);
     }
   }
 
@@ -249,7 +250,7 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: widget.hideAppBar ? null : AppBar(
         title: Text(_hasExistingChecklist ? 'Ver Checkout' : 'Realizar Checkout'),
         backgroundColor: scheme.primary,
       ),
@@ -291,32 +292,20 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
   Widget _buildCheckoutForm(ColorScheme scheme) {
     return Form(
       key: _formKey,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Banner informativo de datos precargados
-            if (_ticket.checkinChecklist != null)
-              Container(
-                color: Colors.blue.shade50,
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Datos precargados desde el check-in',
-                        style: TextStyle(color: Colors.blue.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Paso 1: Información del Ticket
-              if (_currentStep == 1)
-                FormSectionWidget(
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Sección 1: Información del Ticket
+                  Visibility(
+                    visible: _currentSection == 1,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 1,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Información del Ticket',
                   description: 'Datos generales del vehículo',
                   children: [
@@ -350,14 +339,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       onChanged: (v) => setState(() => _checklistData['marca'] = v),
                       readOnly: _hasExistingChecklist,
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 2: Tiempos y Kilometraje
-              if (_currentStep == 2)
-                FormSectionWidget(
+                  // Sección 2: Tiempos y Kilometraje
+                  Visibility(
+                    visible: _currentSection == 2,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 2,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Tiempos y Kilometraje',
                   description: 'Registra horarios y combustible',
                   children: [
@@ -403,14 +395,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       onChanged: (v) => setState(() => _checklistData['nivel_combustible_final'] = v),
                       readOnly: _hasExistingChecklist,
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 3: Llantas
-              if (_currentStep == 3)
-                FormSectionWidget(
+                  // Sección 3: Llantas
+                  Visibility(
+                    visible: _currentSection == 3,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 3,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Llantas',
                   description: 'Verifica el estado de todas las llantas',
                   children: [
@@ -464,14 +459,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 4: Frontal
-              if (_currentStep == 4)
-                FormSectionWidget(
+                  // Sección 4: Frontal
+                  Visibility(
+                    visible: _currentSection == 4,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 4,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Parte Frontal',
                   description: 'Verifica parabrisas, cofre, defensas, etc.',
                   children: [
@@ -493,14 +491,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Antena', value: _checklistData['antena'] ?? true, onChanged: (_) => setState(() => _checklistData['antena'] = !(_checklistData['antena'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 5: Luces
-              if (_currentStep == 5)
-                FormSectionWidget(
+                  // Sección 5: Luces
+                  Visibility(
+                    visible: _currentSection == 5,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 5,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Luces',
                   description: 'Verifica todas las luces del vehículo',
                   children: [
@@ -522,14 +523,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Calaveras', value: _checklistData['calaveras_buen_estado'] ?? true, onChanged: (_) => setState(() => _checklistData['calaveras_buen_estado'] = !(_checklistData['calaveras_buen_estado'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 6: Seguridad
-              if (_currentStep == 6)
-                FormSectionWidget(
+                  // Sección 6: Seguridad
+                  Visibility(
+                    visible: _currentSection == 6,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 6,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Seguridad',
                   description: 'Verifica equipos de seguridad',
                   children: [
@@ -551,14 +555,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Triángulo', value: _checklistData['triangulo_emergencia'] ?? true, onChanged: (_) => setState(() => _checklistData['triangulo_emergencia'] = !(_checklistData['triangulo_emergencia'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 7: Interior
-              if (_currentStep == 7)
-                FormSectionWidget(
+                  // Sección 7: Interior
+                  Visibility(
+                    visible: _currentSection == 7,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 7,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Interior',
                   description: 'Verifica componentes interiores',
                   children: [
@@ -589,14 +596,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Tapetes', value: _checklistData['tapetes_delanteros_traseros'] ?? true, onChanged: (_) => setState(() => _checklistData['tapetes_delanteros_traseros'] = !(_checklistData['tapetes_delanteros_traseros'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 8: Motor
-              if (_currentStep == 8)
-                FormSectionWidget(
+                  // Sección 8: Motor
+                  Visibility(
+                    visible: _currentSection == 8,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 8,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Motor',
                   description: 'Verifica componentes del motor',
                   children: [
@@ -618,14 +628,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Radiador', value: _checklistData['radiador'] ?? true, onChanged: (_) => setState(() => _checklistData['radiador'] = !(_checklistData['radiador'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 9: Herramientas
-              if (_currentStep == 9)
-                FormSectionWidget(
+                  // Sección 9: Herramientas
+                  Visibility(
+                    visible: _currentSection == 9,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 9,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Herramientas',
                   description: 'Verifica equipos y herramientas',
                   children: [
@@ -644,14 +657,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Birlo Seg', value: _checklistData['dado_birlo_seguridad'] ?? true, onChanged: (_) => setState(() => _checklistData['dado_birlo_seguridad'] = !(_checklistData['dado_birlo_seguridad'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 10: Calcomanías
-              if (_currentStep == 10)
-                FormSectionWidget(
+                  // Sección 10: Calcomanías
+                  Visibility(
+                    visible: _currentSection == 10,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 10,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Calcomanías',
                   description: 'Verifica pegatinas y calcomanías',
                   children: [
@@ -667,14 +683,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         ChecklistCheckboxWidget(label: 'Veloc Máx', value: _checklistData['calcomania_velocidad_maxima'] ?? true, onChanged: (_) => setState(() => _checklistData['calcomania_velocidad_maxima'] = !(_checklistData['calcomania_velocidad_maxima'] ?? true))),
                       ],
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 11: Condición de Carrocería
-              if (_currentStep == 11)
-                FormSectionWidget(
+                  // Sección 11: Condición de Carrocería
+                  Visibility(
+                    visible: _currentSection == 11,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 11,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Condición de Carrocería',
                   description: 'Dibuja los daños detectados en el vehículo',
                   children: [
@@ -685,14 +704,17 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                         });
                       },
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
 
-              // Paso 12: Observaciones
-              if (_currentStep == 12)
-                FormSectionWidget(
+                  // Sección 12: Observaciones
+                  Visibility(
+                    visible: _currentSection == 12,
+                    maintainState: true,
+                    child: FormSectionWidget(
                   step: 12,
-                  totalSteps: _totalSteps,
+                  totalSteps: 12,
                   title: 'Observaciones',
                   description: 'Registra observaciones y daños',
                   children: [
@@ -726,69 +748,95 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
                       onChanged: (v) => setState(() => _checklistData['responsable_entrega'] = v),
                       readOnly: _hasExistingChecklist,
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-              // Botones
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: _hasExistingChecklist
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text('Volver'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: scheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
+          // Botones de navegación
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: _hasExistingChecklist
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Volver'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                      )
-                    : Row(
-                        children: [
-                          if (_currentStep > 1)
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: _previousStep,
-                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                                child: const Text('Atrás'),
-                              ),
-                            ),
-                          if (_currentStep > 1) const SizedBox(width: 12),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        if (_currentSection > 1)
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : (_currentStep == _totalSteps ? _submit : _nextStep),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: scheme.primary,
-                                foregroundColor: Colors.white,
+                            child: OutlinedButton.icon(
+                              onPressed: _previousSection,
+                              icon: const Icon(Icons.arrow_back, size: 20),
+                              label: const Text('Atrás'),
+                              style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
-                              child: _isSubmitting
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : Text(
-                                      _currentStep == _totalSteps ? 'Enviar' : 'Siguiente',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
-                                    ),
                             ),
                           ),
-                        ],
-                      ),
-              ),
-            ],
+                        if (_currentSection > 1) const SizedBox(width: 12),
+                        Expanded(
+                          flex: _currentSection == 1 ? 1 : 1,
+                          child: ElevatedButton.icon(
+                            onPressed: _isSubmitting
+                                ? null
+                                : (_currentSection == _totalSections ? _submit : _nextSection),
+                            icon: _isSubmitting
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Icon(
+                                    _currentSection == _totalSections ? Icons.send : Icons.arrow_forward,
+                                    size: 20,
+                                  ),
+                            label: Text(
+                              _isSubmitting
+                                  ? 'Enviando...'
+                                  : (_currentSection == _totalSections ? 'Enviar' : 'Siguiente'),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: scheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    );
   }
 }
 
