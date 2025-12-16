@@ -43,6 +43,7 @@ dependencies:
 
   # Almacenamiento local de datos (sesión de usuario)
   shared_preferences: ^2.2.2
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

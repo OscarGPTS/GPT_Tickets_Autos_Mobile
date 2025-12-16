@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'GPT Tickets Autos',
+      title: 'Requisición de Autos',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: colorScheme,
