@@ -5,6 +5,7 @@ import '../../services/checkin_service.dart';
 import '../../services/storage_service.dart';
 import 'widgets/form_section_widget.dart';
 import 'widgets/form_input_widget.dart';
+import 'widgets/form_dropdown_widget.dart';
 import 'widgets/checklist_checkbox_widget.dart';
 import 'widgets/vehicle_damage_canvas_widget.dart';
 
@@ -27,6 +28,32 @@ class _CheckinScreenState extends State<CheckinScreen> {
   final StorageService _storageService = StorageService();
   bool _isSubmitting = false;
   bool _isLoading = true;
+
+  // Helper para mostrar time picker
+  Future<void> _selectTime(BuildContext context, String field) async {
+    TimeOfDay initialTime = TimeOfDay.now();
+    if (_checklistData[field] != null && _checklistData[field].toString().isNotEmpty) {
+      try {
+        final parts = _checklistData[field].toString().split(':');
+        if (parts.length == 2) {
+          initialTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        }
+      } catch (e) {
+        initialTime = TimeOfDay.now();
+      }
+    }
+
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _checklistData[field] = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
+    }
+  }
 
   bool _hasExistingCheckin = false;
   
@@ -321,18 +348,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     label: 'Hora Entrada',
                     hint: 'HH:MM',
                     value: _checklistData['hora_entrada']?.toString() ?? '',
-                    onChanged: (v) => setState(() => _checklistData['hora_entrada'] = v),
+                    onChanged: (v) {},
+                    readOnly: true,
+                    onTap: () => _selectTime(context, 'hora_entrada'),
+                    suffixIcon: Icon(Icons.access_time, color: Colors.blue),
                   ),
                   FormInputWidget(
                     label: 'Kilometraje Final',
-                    hint: 'Kilometraje al regreso',
+                    hint: 'Ej: 15000',
                     value: _checklistData['kilometraje_final']?.toString() ?? '',
                     onChanged: (v) => setState(() => _checklistData['kilometraje_final'] = v),
+                    keyboardType: TextInputType.number,
                   ),
-                  FormInputWidget(
-                    label: 'Combustible Final',
-                        hint: '1/2, 3/4, etc',
-                        value: _checklistData['nivel_combustible_final']?.toString() ?? '',
+                  FormDropdownWidget(
+                        label: 'Combustible Final',
+                        value: _checklistData['nivel_combustible_final']?.toString(),
+                        options: const ['Vacío', '1/4', '1/2', '3/4', 'Lleno'],
                         onChanged: (v) => setState(() => _checklistData['nivel_combustible_final'] = v),
                       ),
                     ],

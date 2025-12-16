@@ -1,33 +1,23 @@
 import 'package:flutter/material.dart';
 
-class FormInputWidget extends StatelessWidget {
+class FormDropdownWidget extends StatelessWidget {
   final String label;
-  final String? hint;
   final String? value;
-  final ValueChanged<String> onChanged;
-  final TextInputType keyboardType;
+  final List<String> options;
+  final ValueChanged<String?> onChanged;
   final bool required;
-  final String? Function(String?)? validator;
-  final int maxLines;
-  final Widget? prefixIcon;
-  final Widget? suffixIcon;
   final bool readOnly;
-  final VoidCallback? onTap;
+  final String? hint;
 
-  const FormInputWidget({
+  const FormDropdownWidget({
     super.key,
     required this.label,
-    this.hint,
     this.value,
+    required this.options,
     required this.onChanged,
-    this.keyboardType = TextInputType.text,
     this.required = false,
-    this.validator,
-    this.maxLines = 1,
-    this.prefixIcon,
-    this.suffixIcon,
     this.readOnly = false,
-    this.onTap,
+    this.hint,
   });
 
   @override
@@ -60,20 +50,17 @@ class FormInputWidget extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          initialValue: value,
+        DropdownButtonFormField<String>(
+          value: value?.isEmpty == true ? null : value,
+          items: options.map((String option) {
+            return DropdownMenuItem<String>(
+              value: option,
+              child: Text(option),
+            );
+          }).toList(),
           onChanged: readOnly ? null : onChanged,
-          enabled: !readOnly,
-          readOnly: onTap != null,
-          onTap: onTap,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          minLines: maxLines == 1 ? 1 : null,
-          validator: validator,
           decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
+            hintText: hint ?? 'Seleccionar',
             filled: true,
             fillColor: readOnly ? Colors.grey.shade100 : Colors.grey.shade50,
             contentPadding: const EdgeInsets.symmetric(
