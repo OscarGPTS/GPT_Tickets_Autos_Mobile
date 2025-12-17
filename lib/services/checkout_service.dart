@@ -19,7 +19,7 @@ class CheckoutService {
   /// [checklistData] - Datos completos del checklist en formato Map
   /// 
   /// Retorna un ApiResponse con el resultado de la operación
-  Future<ApiResponse<ChecklistSubmitResponse>> submitCheckout({
+  Future<ApiResponse<ChecklistSubmitResponse?>> submitCheckout({
     required int ticketId,
     required Map<String, dynamic> checklistData,
   }) async {
@@ -41,35 +41,30 @@ class CheckoutService {
           )
           .timeout(ApiConfig.connectTimeout);
 
-      final Map<String, dynamic> body = jsonDecode(response.body);
+      print("========== CHECKOUT RESPONSE ==========");
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+      print("=======================================");
 
-      // Procesar respuesta exitosa
-      if (response.statusCode == 200 && body['success'] == true) {
-        final data = body['data'] as Map<String, dynamic>;
-        final submitResponse = ChecklistSubmitResponse.fromJson(data);
-
+      // Procesar respuesta - solo verificar status 200
+      if (response.statusCode == 200 || response.statusCode == 201) {
         await _logService.info('Checkout guardado exitosamente para ticket: $ticketId');
-
+        
         return ApiResponse.success(
-          data: submitResponse,
-          message: body['message'] as String? ?? 'Checkout guardado correctamente',
+          data: null,
+          message: 'Checkout guardado correctamente',
         );
       } else {
-        // Procesar respuesta de error
         await _logService.apiError(
-          message: body['message'] as String? ?? 'Error al guardar checkout',
+          message: 'Error al guardar checkout',
           endpoint: ApiConfig.checkoutUrl,
           statusCode: response.statusCode,
-          data: {
-            'ticket_id': ticketId,
-            'errors': body['errors'],
-          },
+          data: {'ticket_id': ticketId},
         );
 
         return ApiResponse.error(
-          message: body['message'] as String? ?? 'Error al guardar checkout',
+          message: 'Error al guardar checkout',
           statusCode: response.statusCode,
-          errors: body['errors'] as Map<String, dynamic>?,
         );
       }
     } catch (e) {

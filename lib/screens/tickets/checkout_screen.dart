@@ -208,32 +208,21 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
         checklistData: _checklistData,
       );
 
+      
       if (!mounted) return;
 
       if (response.success) {
-        // Actualizar ticket en storage local
-        if (response.data?.ticket != null) {
-          await _storageService.updateTicket(response.data!.ticket);
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
+          const SnackBar(
+            content: Text('Checkout guardado correctamente'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Retornar true para indicar éxito
+        Navigator.pop(context, true);
       } else {
-        // Mostrar errores de validación si existen
-        String errorMsg = response.message;
-        if (response.errors != null) {
-          final errors = response.errors!.values.join('\n');
-          errorMsg += '\n$errors';
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg),
+            content: Text(response.message),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -255,24 +244,6 @@ class _CheckoutScreenNewState extends State<CheckoutScreenNew> {
     }
   }
 
-  // Ejemplo de método para enviar a API
-  // Future<void> _submitChecklistToAPI(Map<String, dynamic> data) async {
-  //   try {
-  //     final response = await http.post(
-  //       Uri.parse('http://tu-api.com/checklists'),
-  //       headers: {'Content-Type': 'application/json'},
-  //       body: jsonEncode(data),
-  //     );
-  //     if (response.statusCode == 201 || response.statusCode == 200) {
-  //       // Éxito
-  //     } else {
-  //       throw Exception('Error: ${response.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     print('Error enviando checklist: $e');
-  //     rethrow;
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {

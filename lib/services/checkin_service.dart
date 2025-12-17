@@ -19,7 +19,7 @@ class CheckinService {
   /// [checklistData] - Datos completos del checklist en formato Map
   /// 
   /// Retorna un ApiResponse con el resultado de la operación
-  Future<ApiResponse<ChecklistSubmitResponse>> submitCheckin({
+  Future<ApiResponse<ChecklistSubmitResponse?>> submitCheckin({
     required int ticketId,
     required Map<String, dynamic> checklistData,
   }) async {
@@ -41,35 +41,30 @@ class CheckinService {
           )
           .timeout(ApiConfig.connectTimeout);
 
-      final Map<String, dynamic> body = jsonDecode(response.body);
+      print("========== CHECKIN RESPONSE ==========");
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+      print("======================================");
 
-      // Procesar respuesta exitosa
-      if (response.statusCode == 200 && body['success'] == true) {
-        final data = body['data'] as Map<String, dynamic>;
-        final submitResponse = ChecklistSubmitResponse.fromJson(data);
-
+      // Procesar respuesta - solo verificar status 200
+      if (response.statusCode == 200 || response.statusCode == 201) {
         await _logService.info('Checkin guardado exitosamente para ticket: $ticketId');
-
+        
         return ApiResponse.success(
-          data: submitResponse,
-          message: body['message'] as String? ?? 'Checkin guardado correctamente',
+          data: null,
+          message: 'Checkin guardado correctamente',
         );
       } else {
-        // Procesar respuesta de error
         await _logService.apiError(
-          message: body['message'] as String? ?? 'Error al guardar checkin',
+          message: 'Error al guardar checkin',
           endpoint: ApiConfig.checkinUrl,
           statusCode: response.statusCode,
-          data: {
-            'ticket_id': ticketId,
-            'errors': body['errors'],
-          },
+          data: {'ticket_id': ticketId},
         );
 
         return ApiResponse.error(
-          message: body['message'] as String? ?? 'Error al guardar checkin',
+          message: 'Error al guardar checkin',
           statusCode: response.statusCode,
-          errors: body['errors'] as Map<String, dynamic>?,
         );
       }
     } catch (e) {

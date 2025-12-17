@@ -197,34 +197,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
       if (!mounted) return;
 
       if (response.success) {
-        // Actualizar ticket en storage local
-        if (response.data?.ticket != null) {
-          await _storageService.updateTicket(response.data!.ticket);
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
+          const SnackBar(
+            content: Text('Checkin guardado correctamente'),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context, true);
       } else {
-        String errorMsg = response.message;
-        if (response.errors != null) {
-          final errors = response.errors!.values.join('\n');
-          errorMsg = '$errorMsg\n\n$errors';
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMsg),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;
