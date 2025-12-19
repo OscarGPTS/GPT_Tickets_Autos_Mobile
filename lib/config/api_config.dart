@@ -8,12 +8,16 @@ class ApiConfig {
   static const String checkoutEndpoint = '/dispatcher/checklist/checkout';
   static const String checkinEndpoint = '/dispatcher/checklist/checkin';
   static const String ticketDetailEndpoint = '/dispatcher/ticket';
+  
+  // Endpoints del Usuario
+  static const String userTicketsEndpoint = '/user/my-tickets';
 
   // URLs completas
   static String get loginUrl => '$baseUrl$loginEndpoint';
   static String get checkoutUrl => '$baseUrl$checkoutEndpoint';
   static String get checkinUrl => '$baseUrl$checkinEndpoint';
   static String ticketUrl(int id) => '$baseUrl$ticketDetailEndpoint/$id';
+  static String get userTicketsUrl => '$baseUrl$userTicketsEndpoint';
 
   // Configuración de timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

@@ -156,7 +156,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
     }
   }
 
-  void _nextSection() {
+  void _nextSection() async {
+    // Si estamos en la sección de carrocería (11), intentar guardar automáticamente la imagen
+    if (_currentSection == 11) {
+      // Trigger auto-save si hay cambios pendientes
+      // La imagen ya se guarda en el callback onImageSaved
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    
     if (_currentSection < _totalSections) {
       setState(() => _currentSection++);
     }
@@ -187,6 +194,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
           _checklistData['kilometraje_final'] = double.tryParse(km);
         }
       }
+
+      
+      print('=== CHECKIN DATA ===');
+      print('Imagen presente: ${_checklistData['condicion_carroceria_imagen'] != null}');
+      if (_checklistData['condicion_carroceria_imagen'] != null) {
+        final imgData = _checklistData['condicion_carroceria_imagen'] as String;
+        print('Formato correcto: ${imgData.startsWith("data:image/")}');
+        print('Longitud: ${imgData.length} caracteres');
+      }
+      print('===================');
 
       // Enviar a la API
       final response = await _checkinService.submitCheckin(

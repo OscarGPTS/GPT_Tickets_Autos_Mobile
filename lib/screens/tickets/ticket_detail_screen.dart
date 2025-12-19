@@ -219,6 +219,7 @@ class TicketDetailScreen extends StatelessWidget {
     ];
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int index = 0; index < steps.length; index++) ...[
           // Círculo del paso
@@ -251,13 +252,13 @@ class TicketDetailScreen extends StatelessWidget {
                   steps[index]['label'] as String,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: index == currentStep ? FontWeight.bold : FontWeight.normal,
                     color: index <= currentStep
                         ? scheme.primary
                         : Colors.grey.shade600,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -266,12 +267,15 @@ class TicketDetailScreen extends StatelessWidget {
           // Línea conectora (solo entre pasos, no después del último)
           if (index < steps.length - 1)
             Expanded(
-              child: Container(
-                height: 2,
-                margin: const EdgeInsets.only(bottom: 30),
-                color: index < currentStep
-                    ? scheme.primary
-                    : Colors.grey.shade300,
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 19),
+                child: Container(
+                  height: 2,
+                  color: index < currentStep
+                      ? scheme.primary
+                      : Colors.grey.shade300,
+                ),
               ),
             ),
         ],

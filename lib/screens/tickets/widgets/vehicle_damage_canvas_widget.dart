@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 enum VehicleType { truck, car }
 
 class VehicleDamageCanvasWidget extends StatefulWidget {
   final ValueChanged<String> onImageSaved;
+  final VoidCallback? onAutoSave;
 
   const VehicleDamageCanvasWidget({
     super.key,
     required this.onImageSaved,
+    this.onAutoSave,
   });
 
   @override
@@ -20,14 +23,15 @@ class VehicleDamageCanvasWidget extends StatefulWidget {
 
 class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  ui.Image? _vehicleImage;
-  bool _imageLoaded = false;
+  ui.Image? _truckImage;
+  ui.Image? _carImage;
+  bool _imagesLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadImage();
+    _loadImages();
   }
 
   @override
@@ -36,29 +40,44 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
     super.dispose();
   }
 
-  Future<void> _loadImage() async {
+  Future<void> _loadImages() async {
     try {
-      final imageProvider = const AssetImage('lib/assets/autos.png');
-      final imageStream = imageProvider.resolve(const ImageConfiguration());
-      final completer = Completer<ui.Image>();
+      // Cargar imagen de camioneta
+      final truckProvider = const AssetImage('assets/camioneta.png');
+      final truckStream = truckProvider.resolve(const ImageConfiguration());
+      final truckCompleter = Completer<ui.Image>();
       
-      imageStream.addListener(ImageStreamListener((image, synchronousCall) {
-        if (!completer.isCompleted) {
-          completer.complete(image.image);
+      truckStream.addListener(ImageStreamListener((image, synchronousCall) {
+        if (!truckCompleter.isCompleted) {
+          truckCompleter.complete(image.image);
+        }
+      }));
+
+      // Cargar imagen de auto
+      final carProvider = const AssetImage('assets/auto.png');
+      final carStream = carProvider.resolve(const ImageConfiguration());
+      final carCompleter = Completer<ui.Image>();
+      
+      carStream.addListener(ImageStreamListener((image, synchronousCall) {
+        if (!carCompleter.isCompleted) {
+          carCompleter.complete(image.image);
         }
       }));
       
-      final uiImage = await completer.future;
+      final truckImage = await truckCompleter.future;
+      final carImage = await carCompleter.future;
+      
       if (mounted) {
         setState(() {
-          _vehicleImage = uiImage;
-          _imageLoaded = true;
+          _truckImage = truckImage;
+          _carImage = carImage;
+          _imagesLoaded = true;
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error cargando imagen: $e')),
+          SnackBar(content: Text('Error cargando imágenes: $e')),
         );
       }
     }
@@ -70,7 +89,7 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Dibuja los daños del vehículo',
+          'Dibuja los daños del vehículo (se guarda automáticamente)',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
@@ -102,7 +121,7 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
           ),
         ),
         const SizedBox(height: 8),
-        if (_imageLoaded && _vehicleImage != null)
+        if (_imagesLoaded && _truckImage != null && _carImage != null)
           SizedBox(
             height: 480,
             child: TabBarView(
@@ -110,12 +129,12 @@ class _VehicleDamageCanvasWidgetState extends State<VehicleDamageCanvasWidget> w
               physics: const NeverScrollableScrollPhysics(), // Desactivar swipe entre tabs
               children: [
                 VehicleCanvasPanel(
-                  vehicleImage: _vehicleImage!,
+                  vehicleImage: _truckImage!,
                   vehicleType: VehicleType.truck,
                   onImageSaved: widget.onImageSaved,
                 ),
                 VehicleCanvasPanel(
-                  vehicleImage: _vehicleImage!,
+                  vehicleImage: _carImage!,
                   vehicleType: VehicleType.car,
                   onImageSaved: widget.onImageSaved,
                 ),
@@ -162,6 +181,9 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
   final List<Color> _strokeColors = [];
   List<Offset>? _currentStroke;
   int _strokeVersion = 0;
+  
+  // Información de la imagen dibujada para calcular coordenadas relativas
+  Rect? _imageRect;
 
   @override
   void initState() {
@@ -186,7 +208,10 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
       _strokes.clear();
       _strokeColors.clear();
       _strokeVersion++;
+      _imageSaved = false;
     });
+    // Auto-guardar después de limpiar
+    _saveCanvas(showNotification: false);
   }
 
   void _undoStroke() {
@@ -195,33 +220,66 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
         _strokes.removeLast();
         _strokeColors.removeLast();
         _strokeVersion++;
+        _imageSaved = false;
       });
+      // Auto-guardar después de deshacer
+      _saveCanvas(showNotification: false);
     }
   }
 
-  Future<void> _saveCanvas() async {
+  bool _imageSaved = false;
+  Size? _canvasSize; // Guardar tamaño del canvas para escalar coordenadas
+
+  Future<void> _saveCanvas({bool showNotification = true}) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    const size = Size(800, 500);
+    // Usar las dimensiones reales de las imágenes: 561x420
+    const size = Size(561, 420);
 
-    // Dibujar imagen completa
-    final srcRect = Rect.fromLTWH(0, 0, widget.vehicleImage.width.toDouble(), widget.vehicleImage.height.toDouble());
+    // Dibujar la imagen completa (ya son imágenes separadas)
+    final imageHeight = widget.vehicleImage.height.toDouble();
+    final imageWidth = widget.vehicleImage.width.toDouble();
+    
+    final srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
     final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawImageRect(widget.vehicleImage, srcRect, dstRect, Paint());
 
-    // Dibujar trazos
-    final strokePaint = Paint()
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    // Convertir coordenadas de canvas de pantalla a coordenadas de imagen
+    if (_imageRect != null && _strokes.isNotEmpty) {
+      // Dibujar trazos convertidos a coordenadas relativas a la imagen
+      final strokePaint = Paint()
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
 
-    for (int i = 0; i < _strokes.length; i++) {
-      final stroke = _strokes[i];
-      final color = _strokeColors[i];
-      strokePaint.color = color;
+      for (int i = 0; i < _strokes.length; i++) {
+        final stroke = _strokes[i];
+        final color = _strokeColors[i];
+        strokePaint.color = color;
 
-      for (int j = 0; j < stroke.length - 1; j++) {
-        canvas.drawLine(stroke[j], stroke[j + 1], strokePaint);
+        for (int j = 0; j < stroke.length - 1; j++) {
+          // Convertir de coordenadas del canvas de pantalla a coordenadas relativas a la imagen [0-1]
+          final relativeStart = Offset(
+            (stroke[j].dx - _imageRect!.left) / _imageRect!.width,
+            (stroke[j].dy - _imageRect!.top) / _imageRect!.height,
+          );
+          final relativeEnd = Offset(
+            (stroke[j + 1].dx - _imageRect!.left) / _imageRect!.width,
+            (stroke[j + 1].dy - _imageRect!.top) / _imageRect!.height,
+          );
+          
+          // Convertir de coordenadas relativas [0-1] a coordenadas del canvas de salida
+          final outputStart = Offset(
+            relativeStart.dx * size.width,
+            relativeStart.dy * size.height,
+          );
+          final outputEnd = Offset(
+            relativeEnd.dx * size.width,
+            relativeEnd.dy * size.height,
+          );
+          
+          canvas.drawLine(outputStart, outputEnd, strokePaint);
+        }
       }
     }
 
@@ -231,12 +289,76 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
     final pngBytes = byteData!.buffer.asUint8List();
     final base64Image = base64Encode(pngBytes);
 
-    widget.onImageSaved(base64Image);
-    if (mounted) {
+    // Formato requerido: data:image/png;base64,{contenido}
+    final formattedImage = 'data:image/png;base64,$base64Image';
+
+    widget.onImageSaved(formattedImage);
+    
+    setState(() {
+      _imageSaved = true;
+    });
+
+    if (mounted && showNotification) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imagen ${widget.vehicleType == VehicleType.truck ? "camioneta" : "auto"} guardada')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text('Imagen ${widget.vehicleType == VehicleType.truck ? "camioneta" : "auto"} guardada'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
       );
+      
+      // Mostrar preview temporal de la imagen guardada para depuración
+      _showImagePreview(pngBytes);
     }
+  }
+
+  void _showImagePreview(Uint8List imageBytes) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Preview de imagen guardada',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 500),
+              child: Image.memory(
+                imageBytes,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Tamaño: 561x420 px',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Offset _transformPosition(Offset position) {
@@ -346,20 +468,49 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
                         _strokeColors.add(Colors.red);
                         _currentStroke = null;
                         _strokeVersion++;
+                        _imageSaved = false;
                       });
+                      // Auto-guardar después de cada trazo
+                      _saveCanvas(showNotification: false);
                     }
                   } : null,
                   child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: _VehicleCanvasPainter(
-                        vehicleImage: widget.vehicleImage,
-                        strokes: _strokes,
-                        strokeColors: _strokeColors,
-                        currentStroke: _currentStroke,
-                        version: _strokeVersion,
-                        vehicleType: widget.vehicleType,
-                      ),
-                      size: Size(MediaQuery.of(context).size.width - 32, 320),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Capturar el tamaño del canvas para poder escalar coordenadas al guardar
+                        final canvasSize = Size(MediaQuery.of(context).size.width - 32, 320);
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_canvasSize != canvasSize) {
+                            setState(() {
+                              _canvasSize = canvasSize;
+                            });
+                          }
+                        });
+                        
+                        return CustomPaint(
+                          painter: _VehicleCanvasPainter(
+                            vehicleImage: widget.vehicleImage,
+                            strokes: _strokes,
+                            strokeColors: _strokeColors,
+                            currentStroke: _currentStroke,
+                            version: _strokeVersion,
+                            vehicleType: widget.vehicleType,
+                            onImageRectCalculated: (rect) {
+                              // Guardar el rectángulo donde se dibuja la imagen
+                              if (_imageRect != rect) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (mounted) {
+                                    setState(() {
+                                      _imageRect = rect;
+                                    });
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                          size: canvasSize,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -394,9 +545,26 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _saveCanvas,
-                  icon: const Icon(Icons.save, size: 16),
-                  label: const Text('Guardar', style: TextStyle(fontSize: 11)),
+                  icon: Icon(
+                    _imageSaved ? Icons.check_circle : Icons.save,
+                    size: 16,
+                  ),
+                  label: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _imageSaved ? 'Guardado' : 'Guardar',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      if (_imageSaved) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.check, size: 14),
+                      ],
+                    ],
+                  ),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: _imageSaved ? Colors.green.shade600 : Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
@@ -415,6 +583,7 @@ class _VehicleCanvasPainter extends CustomPainter {
   final List<Offset>? currentStroke;
   final int version;
   final VehicleType vehicleType;
+  final ValueChanged<Rect>? onImageRectCalculated;
 
   _VehicleCanvasPainter({
     required this.vehicleImage,
@@ -423,40 +592,44 @@ class _VehicleCanvasPainter extends CustomPainter {
     required this.currentStroke,
     required this.version,
     required this.vehicleType,
+    this.onImageRectCalculated,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Determinar qué mitad VERTICAL de la imagen mostrar según el tipo de vehículo
+    // Dibujar la imagen completa (ya son imágenes separadas 561x420)
     final imageHeight = vehicleImage.height.toDouble();
     final imageWidth = vehicleImage.width.toDouble();
     
-    // srcRect define qué parte de la imagen source dibujar (división VERTICAL)
-    final srcRect = vehicleType == VehicleType.truck
-        ? Rect.fromLTWH(0, 0, imageWidth / 2, imageHeight) // Mitad izquierda (camioneta)
-        : Rect.fromLTWH(imageWidth / 2, 0, imageWidth / 2, imageHeight); // Mitad derecha (auto)
+    // srcRect es toda la imagen
+    final srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
     
-    // Calcular el tamaño destino manteniendo proporción de la mitad vertical
-    final halfImageAspect = (imageWidth / 2) / imageHeight;
+    // Calcular el tamaño destino manteniendo proporción
+    final imageAspect = imageWidth / imageHeight; // 561/420 = 1.336
     final canvasAspect = size.width / size.height;
     
     double dstWidth, dstHeight;
     double offsetX = 0, offsetY = 0;
     
-    if (halfImageAspect > canvasAspect) {
+    if (imageAspect > canvasAspect) {
       // Imagen más ancha, ajustar al ancho
       dstWidth = size.width;
-      dstHeight = size.width / halfImageAspect;
+      dstHeight = size.width / imageAspect;
       offsetY = (size.height - dstHeight) / 2;
     } else {
       // Imagen más alta, ajustar a la altura
       dstHeight = size.height;
-      dstWidth = size.height * halfImageAspect;
+      dstWidth = size.height * imageAspect;
       offsetX = (size.width - dstWidth) / 2;
     }
     
     final dstRect = Rect.fromLTWH(offsetX, offsetY, dstWidth, dstHeight);
     canvas.drawImageRect(vehicleImage, srcRect, dstRect, Paint());
+
+    // Notificar el rectángulo donde se dibujó la imagen
+    if (onImageRectCalculated != null) {
+      onImageRectCalculated!(dstRect);
+    }
 
     // Dibujar trazos guardados
     final strokePaint = Paint()

@@ -157,21 +157,6 @@ class TicketCardWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-
-                  if (ticket.purpose != null && ticket.purpose!.isNotEmpty)
-                    Expanded(
-                      child: Text(
-                        ticket.purpose!,
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ),
                 ],
               ),
 

@@ -44,6 +44,9 @@ dependencies:
   # Almacenamiento local de datos (sesión de usuario)
   shared_preferences: ^2.2.2
   intl: ^0.20.2
+  
+  # Vector math para transformaciones de canvas
+  vector_math: ^2.1.4
 
 dev_dependencies:
   flutter_test:
@@ -72,10 +75,11 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - lib/assets/
-    - lib/assets/splash_logo.png
-    - lib/assets/logo.png
-    - lib/assets/autos.png
+    - assets/
+    - assets/auto.png
+    - assets/camioneta.png
+    - assets/splash_logo.png
+    - assets/logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -106,7 +110,7 @@ flutter:
 # Configuración del Splash Screen
 flutter_native_splash:
   # Logo del splash screen
-  image: lib/assets/splash_logo.png
+  image: assets/splash_logo.png
   
   # Color de fondo (rojo de la marca)
   color: "#ffffff"
@@ -115,11 +119,11 @@ flutter_native_splash:
   color_dark: "#000000"
   
   # Imagen para modo oscuro (opcional, usa la misma)
-  image_dark: lib/assets/splash_logo.png
+  image_dark: assets/splash_logo.png
   
   # Configuración Android 12+
   android_12:
-    image: lib/assets/splash_logo.png
+    image: assets/splash_logo.png
     color: "#FFFFFF"
     icon_background_color: "#FFFFFF"
   

@@ -3,6 +3,7 @@ import '../../services/storage_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/ticket_model.dart';
 import 'widgets/ticket_card_widget.dart';
+import 'all_tickets_history_screen.dart';
 
 class TicketsScreen extends StatefulWidget {
   const TicketsScreen({super.key});
@@ -77,37 +78,142 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final body = _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _tickets.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.receipt_long_outlined,
-                  size: 80,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No hay tickets disponibles',
-                  style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-                ),
-              ],
+    final scheme = Theme.of(context).colorScheme;
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        // Header con título y botón "Ver todos"
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
             ),
-          )
-        : RefreshIndicator(
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.pending_actions,
+                    size: 20,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Tickets Pendientes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (_tickets.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_tickets.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: scheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AllTicketsHistoryScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history, size: 18),
+                label: const Text('Ver todos'),
+                style: TextButton.styleFrom(
+                  foregroundColor: scheme.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Lista de tickets
+        Expanded(
+          child: RefreshIndicator(
             onRefresh: _loadTickets,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _tickets.length,
-              itemBuilder: (context, index) {
-                final ticket = _tickets[index];
-                return TicketCardWidget(ticket: ticket);
-              },
-            ),
-          );
-    return body;
+            child: _tickets.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height - 300,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.receipt_long_outlined,
+                                size: 80,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No hay tickets pendientes',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Desliza hacia abajo para recargar',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _tickets.length,
+                    itemBuilder: (context, index) {
+                      final ticket = _tickets[index];
+                      return TicketCardWidget(ticket: ticket);
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
   }
 }
