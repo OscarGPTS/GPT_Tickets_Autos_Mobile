@@ -313,26 +313,31 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           label: 'Folio',
                           value: _ticket.folio.toString(),
                           onChanged: (_) {},
+                          readOnly: true,
                         ),
                         FormInputWidget(
                           label: 'Destino',
                           value: _ticket.destination ?? '',
                           onChanged: (v) => setState(() => _ticket = _ticket),
+                          readOnly: true,
                         ),
                         FormInputWidget(
                           label: 'Modelo',
                           value: _ticket.vehicle?.model ?? '',
                           onChanged: (v) => setState(() => _ticket = _ticket),
+                          readOnly: true,
                         ),
                         FormInputWidget(
                           label: 'Placas',
                           value: _ticket.vehicle?.plates ?? '',
                           onChanged: (v) => setState(() => _ticket = _ticket),
+                          readOnly: true,
                         ),
                         FormInputWidget(
                           label: 'Marca',
                           value: _ticket.vehicle?.brand ?? '',
                           onChanged: (v) => setState(() => _ticket = _ticket),
+                          readOnly: true,
                         ),
                       ],
                     ),
@@ -349,12 +354,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 description: 'Registra entrada y mediciones',
                 children: [
                   FormInputWidget(
-                    label: 'Hora Entrada',
+                    label: 'Hora de Llegada',
                     hint: 'HH:MM',
                     value: _checklistData['hora_entrada']?.toString() ?? '',
-                    onChanged: (v) {},
-                    readOnly: true,
-                    onTap: () => _selectTime(context, 'hora_entrada'),
+                    onChanged: (v) {
+                      setState(() => _checklistData['hora_entrada'] = v);
+                    },
+                    readOnly: false,
+                    onTap: () {
+                      _selectTime(context, 'hora_entrada');
+                    } ,
                     suffixIcon: Icon(Icons.access_time, color: Colors.blue),
                   ),
                   FormInputWidget(

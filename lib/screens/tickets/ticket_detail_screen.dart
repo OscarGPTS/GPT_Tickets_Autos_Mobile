@@ -129,22 +129,6 @@ class TicketDetailScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CheckoutScreenNew(ticket: ticket),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.visibility),
-                            label: const Text('Ver Check Out'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: scheme.primary,
-                              minimumSize: const Size.fromHeight(48),
-                            ),
-                          ),
                         ],
                       ),
 

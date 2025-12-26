@@ -545,10 +545,6 @@ class _VehicleCanvasPanelState extends State<VehicleCanvasPanel> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _saveCanvas,
-                  icon: Icon(
-                    _imageSaved ? Icons.check_circle : Icons.save,
-                    size: 16,
-                  ),
                   label: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

@@ -20,13 +20,13 @@ class TicketCardWidget extends StatelessWidget {
       };
     } else if (ticket.hasCheckout) {
       return {
-        'label': 'Check Out',
+        'label': 'Check In Pendiente',
         'icon': Icons.exit_to_app,
         'color': Colors.orange,
       };
     } else {
       return {
-        'label': 'Check In',
+        'label': 'Check Out Pendiente',
         'icon': Icons.check_circle_outline,
         'color': Colors.blue,
       };

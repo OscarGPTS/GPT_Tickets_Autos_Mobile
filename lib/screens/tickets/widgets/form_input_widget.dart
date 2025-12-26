@@ -61,6 +61,7 @@ class FormInputWidget extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          key: ValueKey(value),
           initialValue: value,
           onChanged: readOnly ? null : onChanged,
           enabled: !readOnly,
